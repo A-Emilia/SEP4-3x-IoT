@@ -10,4 +10,10 @@ This file should include a short description of major important functionality al
 | Get sensor data from the last 15 minutes. | `GET /endpoint/recent`    |
 | Send a command to a device.               | `POST /endpoint/{action}` |
 
-(THERE SHOULD BE A LIST OF DEVICES WITH THEIR CORRESPONDING ACTIONS)
+## Supported Device Actions
+
+| Device   | Actions               |
+|----------|-----------------------|
+| Heater   | turn on, turn off     |
+| Windows  | open, close           |
+| Curtain  | open, close           |
