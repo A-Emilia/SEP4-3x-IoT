@@ -4,11 +4,11 @@ This file should include a short description of major important functionality al
 
 
 **`/ENDPOINT/PATH/HERE`**
-| Action                                    | Endpoint                  |
-| :-----------------------------------------|:--------------------------|
-| Get all data sensor data.                 | `GET /endpoint`           |
-| Get sensor data from the last 15 minutes. | `GET /endpoint/recent`    |
-| Send a command to a device.               | `POST /endpoint/{action}` |
+| Action                                    | Endpoint                                    |
+| :-----------------------------------------|:--------------------------------------------|
+| Get all current sensor data.              | `GET /sensor-data/current`                  |
+| Get sensor data based on a time period.   | `GET /sensor-data/history?from=...&to=...`  |
+| Send a command to a device.               | `POST /devices/action`                      |
 
 ## Supported Device Actions
 
