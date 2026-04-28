@@ -1,12 +1,10 @@
-﻿using Repositories;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Repositories;
 
 namespace Controllers;
 
-
 [ApiController]
-[Route("api/measurements")]
-
+[Route("sensor-data")]
 public class MeasurementController : ControllerBase
 {
     private readonly JSONRepo _store;
@@ -16,12 +14,7 @@ public class MeasurementController : ControllerBase
         _store = store;
     }
 
-    [HttpGet]
-    public IActionResult GetAll()
-    {
-        return Ok(_store.GetAll());
-    }
-
+    // GET /sensor-data/current
     [HttpGet("current")]
     public IActionResult GetCurrent()
     {
@@ -31,5 +24,18 @@ public class MeasurementController : ControllerBase
             return NotFound("No measurements yet.");
 
         return Ok(latest);
-    }   
+    }
+
+    // GET /sensor-data/history?from=...&to=...
+    [HttpGet("history")]
+    public IActionResult GetHistoryBasedOnTimestamp(
+        [FromQuery] DateTime from,
+        [FromQuery] DateTime to)
+    {
+        var measurements = _store.GetAll()
+            .Where(m => m.TimestampUtc >= from && m.TimestampUtc <= to)
+            .ToList();
+
+        return Ok(measurements);
+    }
 }
