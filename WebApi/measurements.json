@@ -1,0 +1,65 @@
+[
+  {
+    "Id": "713e2374-0646-4e9e-a858-404a610f532c",
+    "TimestampUtc": "2026-04-22T03:51:25.2229239Z",
+    "Temperature": 23.4,
+    "Humidity": 45.0,
+    "Light": 812
+  },
+  {
+    "Id": "8be56cbb-fbbe-4268-8e89-a70227b7ee63",
+    "TimestampUtc": "2026-04-22T04:09:15.3756292Z",
+    "Temperature": 21.0,
+    "Humidity": 40.0,
+    "Light": 453
+  },
+  {
+    "Id": "eff65b28-6248-46ab-afa2-5adccb8cc081",
+    "TimestampUtc": "2026-04-22T04:09:17.6014718Z",
+    "Temperature": 24.1,
+    "Humidity": 38.0,
+    "Light": 454
+  },
+  {
+    "Id": "ba4da2c5-f463-4239-9470-50cadacb4127",
+    "TimestampUtc": "2026-04-22T04:09:19.8865454Z",
+    "Temperature": 24.1,
+    "Humidity": 38.0,
+    "Light": 455
+  },
+  {
+    "Id": "daa17ffd-695e-40c3-95c6-faac61aac09f",
+    "TimestampUtc": "2026-04-22T04:09:22.0093729Z",
+    "Temperature": 24.1,
+    "Humidity": 38.0,
+    "Light": 454
+  },
+  {
+    "Id": "13954843-7333-4c0e-a28b-89096c02ec40",
+    "TimestampUtc": "2026-04-22T04:09:24.1869379Z",
+    "Temperature": 24.1,
+    "Humidity": 38.0,
+    "Light": 455
+  },
+  {
+    "Id": "f56899c3-47d1-4c5a-b400-3c458d608fb2",
+    "TimestampUtc": "2026-04-22T04:09:26.4134555Z",
+    "Temperature": 24.1,
+    "Humidity": 38.0,
+    "Light": 471
+  },
+  {
+    "Id": "e9ffff82-33f1-45af-972b-6f8de2085f50",
+    "TimestampUtc": "2026-04-22T04:09:28.607475Z",
+    "Temperature": 24.1,
+    "Humidity": 38.0,
+    "Light": 475
+  },
+  {
+    "Id": "6ac2df77-92a2-4577-a27d-3f0d304d281d",
+    "TimestampUtc": "2026-04-22T04:09:30.7982075Z",
+    "Temperature": 24.1,
+    "Humidity": 38.0,
+    "Light": 307
+  }
+]
