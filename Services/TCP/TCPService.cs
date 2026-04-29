@@ -9,10 +9,12 @@ namespace SensorBackend.Api.TCP;
 public class TCPService : BackgroundService
 {
     private readonly JSONRepo _store;
+    private readonly DeviceStateRepo _deviceStateRepo;
 
-    public TCPService(JSONRepo store)
+    public TCPService(JSONRepo store, DeviceStateRepo deviceStateRepo)
     {
         _store = store;
+        _deviceStateRepo = deviceStateRepo;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -24,7 +26,7 @@ public class TCPService : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var client = await listener.AcceptTcpClientAsync();
+            var client = await listener.AcceptTcpClientAsync(stoppingToken);
 
             _ = Task.Run(async () =>
             {
@@ -32,7 +34,7 @@ public class TCPService : BackgroundService
                 using var stream = tcpClient.GetStream();
                 using var reader = new StreamReader(stream);
 
-                while (true)
+                while (!stoppingToken.IsCancellationRequested)
                 {
                     var line = await reader.ReadLineAsync();
 
@@ -54,6 +56,8 @@ public class TCPService : BackgroundService
                         measurement.Id = Guid.NewGuid();
                         measurement.TimestampUtc = DateTime.UtcNow;
 
+                        ApplyDeviceEffects(measurement);
+
                         _store.Add(measurement);
                     }
                     catch
@@ -61,7 +65,32 @@ public class TCPService : BackgroundService
                         Console.WriteLine("Invalid JSON received.");
                     }
                 }
-            });
+            }, stoppingToken);
         }
+    }
+
+    private void ApplyDeviceEffects(Measurement measurement)
+    {
+        var heaterState = _deviceStateRepo.GetState(DeviceType.Heater);
+        var windowState = _deviceStateRepo.GetState(DeviceType.Window);
+        var curtainState = _deviceStateRepo.GetState(DeviceType.Curtain);
+
+        if (heaterState == DeviceState.On)
+        {
+            measurement.Temperature *= 1.1m;
+        }
+
+        if (windowState == DeviceState.Open)
+        {
+            measurement.Temperature *= 0.9m;
+        }
+
+        if (curtainState == DeviceState.Closed)
+        {
+            measurement.Light *= 0.3;
+        }
+
+        measurement.Temperature = Math.Round(measurement.Temperature, 2);
+        measurement.Light = Math.Round(measurement.Light, 2);
     }
 }

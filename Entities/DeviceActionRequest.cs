@@ -2,6 +2,6 @@
 
 public class DeviceActionRequest
 {
-    public Device Device { get; set; }
-    public DeviceAction DeviceAction { get; set; }
+    public DeviceType Device { get; set; }
+    public DeviceState State { get; set; }
 }

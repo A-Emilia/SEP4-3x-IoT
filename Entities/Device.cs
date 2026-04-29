@@ -1,8 +1,7 @@
 ﻿namespace Entities;
 
-public enum Device
+public class Device
 {
-    Heater,
-    Windows,
-    Curtain
+    public DeviceType DeviceType { get; set; }
+    public DeviceState DeviceAction { get; set; }
 }

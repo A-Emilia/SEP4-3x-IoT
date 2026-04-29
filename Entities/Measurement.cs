@@ -7,5 +7,5 @@ public class Measurement
 
     public decimal Temperature { get; set; }
     public decimal Humidity { get; set; }
-    public int Light { get; set; }
+    public double Light { get; set; }
 }
