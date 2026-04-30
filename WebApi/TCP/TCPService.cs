@@ -4,7 +4,7 @@ using System.Text.Json;
 using Entities;
 using Repositories;
 
-namespace SensorBackend.Api.TCP;
+namespace WebApi.TCP;
 
 public class TCPService : BackgroundService
 {

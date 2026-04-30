@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using Repositories;
-using SensorBackend.Api.TCP;
+using WebApi.TCP;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +16,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<JSONRepo>();
 builder.Services.AddSingleton<DeviceStateRepo>();
 builder.Services.AddHostedService<TCPService>();
+builder.Services.AddSingleton<UserRepo>();
 
 var app = builder.Build();
 

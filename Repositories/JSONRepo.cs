@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace Repositories;
 
-public class JSONRepo
+public class JSONRepo //MeasurementsRepo
 {
     private readonly string _filePath = "measurements.json";
     private readonly object _lock = new();
