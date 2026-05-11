@@ -1,18 +1,17 @@
 ﻿using Entities;
 using Microsoft.AspNetCore.Mvc;
 using Repositories;
+using RepositoryContracts;
 
 namespace Controllers;
 
 [ApiController]
 [Route("devices")]
-public class DeviceController : ControllerBase
-{
-    private readonly DeviceStateRepo _deviceStateRepo;
+public class DeviceController : ControllerBase {
+    private readonly IDeviceRepository _deviceRepo;
 
-    public DeviceController(DeviceStateRepo deviceStateRepo)
-    {
-        _deviceStateRepo = deviceStateRepo;
+    public DeviceController(IDeviceRepository deviceRepository) {
+        _deviceRepo = deviceRepository;
     }
 
     // POST /devices/action
@@ -24,7 +23,7 @@ public class DeviceController : ControllerBase
             return BadRequest($"{request.State} is not a valid state for {request.Device}.");
         }
 
-        _deviceStateRepo.SetState(request.Device, request.State);
+        _deviceRepo.SetState(request.Device, request.State);
 
         return Ok(new
         {

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Repositories;
+using RepositoryContracts;
 
 namespace Controllers;
 
@@ -7,18 +8,20 @@ namespace Controllers;
 [Route("sensor-data")]
 public class MeasurementController : ControllerBase
 {
-    private readonly JSONRepo _store;
+    private readonly IMeasurementRepository _measurementRepo;
 
-    public MeasurementController(JSONRepo store)
+    public MeasurementController(IMeasurementRepository measurementRepo)
     {
-        _store = store;
+        _measurementRepo = measurementRepo;
     }
 
     // GET /sensor-data/current
     [HttpGet("current")]
-    public IActionResult GetCurrent()
+    public async Task<IActionResult> GetCurrentAsync()
     {
-        var latest = _store.GetLatest();
+        // TODO: This is where it currently breaks.
+        var latest = await _measurementRepo.GetMostRecent();
+        
 
         if (latest == null)
             return NotFound("No measurements yet.");
@@ -32,10 +35,11 @@ public class MeasurementController : ControllerBase
         [FromQuery] DateTime from,
         [FromQuery] DateTime to)
     {
-        var measurements = _store.GetAll()
-            .Where(m => m.TimestampUtc >= from && m.TimestampUtc <= to)
-            .ToList();
+       // var measurements = _measurementRepo.GetMany()
+       //     .Where(m => m.TimestampUtc >= from && m.TimestampUtc <= to)
+       //     .ToList();
 
-        return Ok(measurements);
+       // return Ok(measurements);
+       throw new NotImplementedException();
     }
 }
