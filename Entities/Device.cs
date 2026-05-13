@@ -2,6 +2,8 @@
 
 public class Device
 {
-    public DeviceType DeviceType { get; set; }
-    public DeviceState DeviceAction { get; set; }
+    public string Id { get; set; } = "";
+    public string RoomId { get; set; } = "";
+    public DeviceState State { get; set; }
+    public DeviceType Type { get; set; }
 }

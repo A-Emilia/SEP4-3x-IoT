@@ -3,7 +3,7 @@ using MongoDB.Driver;
 using Repositories;
 using Repositories.PostgreSQL;
 using RepositoryContracts;
-using SensorBackend.Api.TCP;
+using WebApi.TCP;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +17,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var connectionString =
-    "mongodb://mongodb:mongodb@localhost:27017/measurement_data?authSource=admin";
+    "mongodb://mongodb:mongodb@localhost:27018/measurement_data?authSource=admin";
 
 builder.Services.AddSingleton<IMongoClient>(_ =>
     new MongoClient(connectionString));
@@ -41,7 +41,7 @@ builder.Services.AddScoped<IUserRepository>(_ => new UserRepository(postgresConn
 builder.Services.AddScoped<IRoomRepository>(_ => new RoomRepository(postgresConnectionString));
 builder.Services.AddScoped<IDeviceRepository>(_ => new DeviceRepository(postgresConnectionString));
 
-//builder.Services.AddHostedService<TCPService>();
+builder.Services.AddHostedService<TCPService>();
 
 var app = builder.Build();
 

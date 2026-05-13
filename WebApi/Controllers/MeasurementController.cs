@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Repositories;
 using RepositoryContracts;
 
 namespace Controllers;
@@ -19,9 +18,7 @@ public class MeasurementController : ControllerBase
     [HttpGet("current")]
     public async Task<IActionResult> GetCurrentAsync()
     {
-        // TODO: This is where it currently breaks.
         var latest = await _measurementRepo.GetMostRecent();
-        
 
         if (latest == null)
             return NotFound("No measurements yet.");
@@ -29,17 +26,27 @@ public class MeasurementController : ControllerBase
         return Ok(latest);
     }
 
-    // GET /sensor-data/history?from=...&to=...
+    // GET /sensor-data/history?from=&to=
+    // For example: /sensor-data/history?from=2026-04-22T00:00:00Z&to=2026-04-22T23:59:59Z
     [HttpGet("history")]
-    public IActionResult GetHistoryBasedOnTimestamp(
+    public async Task<IActionResult> GetHistoryBasedOnTimestamp(
         [FromQuery] DateTime from,
         [FromQuery] DateTime to)
     {
-       // var measurements = _measurementRepo.GetMany()
-       //     .Where(m => m.TimestampUtc >= from && m.TimestampUtc <= to)
-       //     .ToList();
+        if (from == default)
+            return BadRequest("'from' query parameter is required.");
 
-       // return Ok(measurements);
-       throw new NotImplementedException();
+        if (to == default)
+            return BadRequest("'to' query parameter is required.");
+
+        if (from > to)
+            return BadRequest("'from' cannot be later than 'to'.");
+
+        var measurements = await _measurementRepo.GetMany(from, to);
+
+        if (measurements.Count == 0)
+            return NotFound("No measurements found in the given time period.");
+
+        return Ok(measurements);
     }
 }

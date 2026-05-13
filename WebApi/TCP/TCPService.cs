@@ -2,19 +2,19 @@
 using System.Net.Sockets;
 using System.Text.Json;
 using Entities;
-using Repositories;
+using RepositoryContracts;
 
 namespace WebApi.TCP;
 
 public class TCPService : BackgroundService
 {
-    private readonly JSONRepo _store;
-    private readonly DeviceStateRepo _deviceStateRepo;
+    private const string SharedRoomId = "shared";
 
-    public TCPService(JSONRepo store, DeviceStateRepo deviceStateRepo)
+    private readonly IServiceScopeFactory _scopeFactory;
+
+    public TCPService(IServiceScopeFactory scopeFactory)
     {
-        _store = store;
-        _deviceStateRepo = deviceStateRepo;
+        _scopeFactory = scopeFactory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -24,56 +24,86 @@ public class TCPService : BackgroundService
 
         Console.WriteLine("TCP server listening on port 5000");
 
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            var client = await listener.AcceptTcpClientAsync(stoppingToken);
-
-            _ = Task.Run(async () =>
+            while (!stoppingToken.IsCancellationRequested)
             {
-                using var tcpClient = client;
-                using var stream = tcpClient.GetStream();
-                using var reader = new StreamReader(stream);
+                var client = await listener.AcceptTcpClientAsync(stoppingToken);
 
-                while (!stoppingToken.IsCancellationRequested)
-                {
-                    var line = await reader.ReadLineAsync();
-
-                    if (line == null)
-                        break;
-
-                    Console.WriteLine("TCP RX: " + line);
-
-                    try
-                    {
-                        var measurement = JsonSerializer.Deserialize<Measurement>(line, new JsonSerializerOptions
-                        {
-                            PropertyNameCaseInsensitive = true
-                        });
-
-                        if (measurement == null)
-                            continue;
-
-                        measurement.Id = "";
-                        measurement.TimestampUtc = DateTime.UtcNow;
-
-                        ApplyDeviceEffects(measurement);
-
-                        _store.Add(measurement);
-                    }
-                    catch
-                    {
-                        Console.WriteLine("Invalid JSON received.");
-                    }
-                }
-            }, stoppingToken);
+                _ = Task.Run(() => HandleClientAsync(client, stoppingToken), stoppingToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine("TCP server stopped.");
+        }
+        finally
+        {
+            listener.Stop();
         }
     }
 
-    private void ApplyDeviceEffects(Measurement measurement)
+    private async Task HandleClientAsync(TcpClient client, CancellationToken stoppingToken)
     {
-        var heaterState = _deviceStateRepo.GetState(DeviceType.Heater);
-        var windowState = _deviceStateRepo.GetState(DeviceType.Window);
-        var curtainState = _deviceStateRepo.GetState(DeviceType.Curtain);
+        using var tcpClient = client;
+        using var stream = tcpClient.GetStream();
+        using var reader = new StreamReader(stream);
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            var line = await reader.ReadLineAsync(stoppingToken);
+
+            if (line == null)
+                break;
+
+            Console.WriteLine("TCP RX: " + line);
+
+            try
+            {
+                var measurement = JsonSerializer.Deserialize<Measurement>(line, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (measurement == null)
+                    continue;
+
+                measurement.Id = null!;
+                measurement.RoomId = SharedRoomId;
+                measurement.TimestampUtc = DateTime.UtcNow;
+
+                using var scope = _scopeFactory.CreateScope();
+
+                var deviceRepository = scope.ServiceProvider
+                    .GetRequiredService<IDeviceRepository>();
+
+                await ApplyDeviceEffects(measurement, deviceRepository);
+
+                var measurementRepository = scope.ServiceProvider
+                    .GetRequiredService<IMeasurementRepository>();
+
+                await measurementRepository.CreateAsync(measurement);
+
+                Console.WriteLine(DateTime.UtcNow + " Measurement saved to MongoDB.");
+            }
+            catch (JsonException)
+            {
+                Console.WriteLine("Invalid JSON received.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Failed to save measurement: " + ex.Message);
+            }
+        }
+    }
+
+    private static async Task ApplyDeviceEffects(
+        Measurement measurement,
+        IDeviceRepository deviceRepository)
+    {
+        var heaterState = await deviceRepository.GetDeviceState(SharedRoomId, DeviceType.Heater);
+        var windowState = await deviceRepository.GetDeviceState(SharedRoomId, DeviceType.Window);
+        var curtainState = await deviceRepository.GetDeviceState(SharedRoomId, DeviceType.Curtain);
 
         if (heaterState == DeviceState.On)
         {
