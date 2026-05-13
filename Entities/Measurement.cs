@@ -1,11 +1,26 @@
-﻿namespace Entities;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+
+namespace Entities;
 
 public class Measurement
 {
-    public Guid Id { get; set; } = Guid.NewGuid(); //TODO MongoDB ID
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = null!; //TODO MongoDB ID
+
+    [BsonElement("roomId")]
+    public string RoomId { get; set; } = "";
+
+    [BsonElement("timestamp")]
     public DateTime TimestampUtc { get; set; }
 
+    [BsonElement("temperature")]
     public decimal Temperature { get; set; }
+    
+    [BsonElement("humidity")]
     public decimal Humidity { get; set; }
+    
+    [BsonElement("lightLevel")]
     public double Light { get; set; }
 }

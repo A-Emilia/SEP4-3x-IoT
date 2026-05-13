@@ -53,7 +53,7 @@ public class TCPService : BackgroundService
                         if (measurement == null)
                             continue;
 
-                        measurement.Id = Guid.NewGuid();
+                        measurement.Id = "";
                         measurement.TimestampUtc = DateTime.UtcNow;
 
                         ApplyDeviceEffects(measurement);
