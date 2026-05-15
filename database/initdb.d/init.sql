@@ -1,6 +1,7 @@
 CREATE TABLE app_user (
     id VARCHAR(16) UNIQUE PRIMARY KEY,
-    name VARCHAR(16) UNIQUE NOT NULL
+    name VARCHAR(16) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE room (
