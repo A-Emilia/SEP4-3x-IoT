@@ -15,10 +15,15 @@ public class UserRepository : IUserRepository
 
     public async Task<User> CreateAsync(User user)
     {
+        if (string.IsNullOrWhiteSpace(user.Id))
+        {
+            user.Id = GenerateUserId();
+        }
+
         const string sql = @"
-            INSERT INTO app_user (id, name)
-            VALUES (@id, @name)
-            RETURNING id, name;
+            INSERT INTO app_user (id, name, password_hash)
+            VALUES (@id, @name, @passwordHash)
+            RETURNING id, name, password_hash;
         ";
 
         await using var connection = await CreateConnectionAsync();
@@ -26,6 +31,7 @@ public class UserRepository : IUserRepository
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddWithValue("id", user.Id);
         command.Parameters.AddWithValue("name", user.Name);
+        command.Parameters.AddWithValue("passwordHash", user.PasswordHash);
 
         await using var reader = await command.ExecuteReaderAsync();
 
@@ -40,7 +46,7 @@ public class UserRepository : IUserRepository
     public async Task<User> GetSingle(string id)
     {
         const string sql = @"
-            SELECT id, name
+            SELECT id, name, password_hash
             FROM app_user
             WHERE id = @id;
         ";
@@ -60,13 +66,36 @@ public class UserRepository : IUserRepository
         throw new KeyNotFoundException($"User with id '{id}' was not found.");
     }
 
+    public async Task<User?> GetByNameAsync(string name)
+    {
+        const string sql = @"
+            SELECT id, name, password_hash
+            FROM app_user
+            WHERE name = @name;
+        ";
+
+        await using var connection = await CreateConnectionAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("name", name);
+
+        await using var reader = await command.ExecuteReaderAsync();
+
+        if (await reader.ReadAsync())
+        {
+            return ReadUser(reader);
+        }
+
+        return null;
+    }
+
     public async Task<User> UpdateContentAsync(User user)
     {
         const string sql = @"
             UPDATE app_user
             SET name = @name
             WHERE id = @id
-            RETURNING id, name;
+            RETURNING id, name, password_hash;
         ";
 
         await using var connection = await CreateConnectionAsync();
@@ -90,7 +119,7 @@ public class UserRepository : IUserRepository
         const string sql = @"
             DELETE FROM app_user
             WHERE id = @id
-            RETURNING id, name;
+            RETURNING id, name, password_hash;
         ";
 
         await using var connection = await CreateConnectionAsync();
@@ -120,7 +149,13 @@ public class UserRepository : IUserRepository
         return new User
         {
             Id = reader.GetString(0),
-            Name = reader.GetString(1)
+            Name = reader.GetString(1),
+            PasswordHash = reader.IsDBNull(2) ? "" : reader.GetString(2)
         };
+    }
+
+    private static string GenerateUserId()
+    {
+        return Guid.NewGuid().ToString("N")[..16];
     }
 }

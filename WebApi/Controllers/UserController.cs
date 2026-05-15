@@ -1,4 +1,5 @@
 using Entities;
+using Entities.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using RepositoryContracts;
@@ -9,11 +10,11 @@ namespace Controllers;
 [Route("user")]
 public class UserController : ControllerBase
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IUserRepository _userRepo;
 
     public UserController(IUserRepository userRepository)
     {
-        _userRepository = userRepository;
+        _userRepo = userRepository;
     }
 
     // GET /user/{id}
@@ -22,38 +23,12 @@ public class UserController : ControllerBase
     {
         try
         {
-            var user = await _userRepository.GetSingle(id);
-            return Ok(user);
+            var user = await _userRepo.GetSingle(id);
+            return Ok(UserResponse.FromUser(user));
         }
         catch (KeyNotFoundException ex)
         {
             return NotFound(ex.Message);
-        }
-    }
-
-    // POST /user/create
-    [HttpPost("create")]
-    public async Task<IActionResult> CreateUser([FromBody] User user)
-    {
-        if (string.IsNullOrWhiteSpace(user.Id))
-            return BadRequest("User id is required.");
-
-        if (string.IsNullOrWhiteSpace(user.Name))
-            return BadRequest("User name is required.");
-
-        try
-        {
-            var createdUser = await _userRepository.CreateAsync(user);
-
-            return Ok(new
-            {
-                message = "User created.",
-                user = createdUser
-            });
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
-        {
-            return Conflict("A user with this id or name already exists.");
         }
     }
 
@@ -64,16 +39,19 @@ public class UserController : ControllerBase
         if (string.IsNullOrWhiteSpace(user.Name))
             return BadRequest("User name is required.");
 
+        if (user.Name.Length > 16)
+            return BadRequest("User name cannot be longer than 16 characters.");
+
         user.Id = id;
 
         try
         {
-            var updatedUser = await _userRepository.UpdateContentAsync(user);
+            var updatedUser = await _userRepo.UpdateContentAsync(user);
 
             return Ok(new
             {
                 message = "User updated.",
-                user = updatedUser
+                user = UserResponse.FromUser(updatedUser)
             });
         }
         catch (KeyNotFoundException ex)
@@ -92,19 +70,18 @@ public class UserController : ControllerBase
     {
         try
         {
-            var deletedUser = await _userRepository.DeleteAsync(id);
+            var deletedUser = await _userRepo.DeleteAsync(id);
 
             return Ok(new
             {
                 message = "User deleted.",
-                user = deletedUser
+                user = UserResponse.FromUser(deletedUser)
             });
         }
         catch (KeyNotFoundException ex)
         {
             return NotFound(ex.Message);
         }
-        //TODO add room deletion here aswell?
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
         {
             return Conflict("This user cannot be deleted because they still have rooms assigned.");
