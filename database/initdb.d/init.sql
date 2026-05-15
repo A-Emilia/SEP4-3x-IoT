@@ -31,4 +31,16 @@ CREATE TABLE actuator (
     FOREIGN KEY(room_id) REFERENCES room(id)
 );
 
+INSERT INTO app_user (id, name, password_hash)
+VALUES ('shared-user', 'SharedUser', 'temporary');
+
+INSERT INTO room (id, user_id, name)
+VALUES ('shared', 'shared-user', 'Shared');
+
+INSERT INTO actuator (id, room_id, state, type)
+VALUES
+    ('heater-shared', 'shared', 'Off/Closed', 'Heater'),
+    ('window-shared', 'shared', 'Off/Closed', 'Window Servo'),
+    ('curtain-shared', 'shared', 'On/Open', 'Curtain Servo');
+
 \dt
