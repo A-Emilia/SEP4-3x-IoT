@@ -6,6 +6,7 @@ using RepositoryContracts;
 
 namespace Controllers;
 
+[Authorize]
 [ApiController]
 [Route("user")]
 public class UserController : ControllerBase

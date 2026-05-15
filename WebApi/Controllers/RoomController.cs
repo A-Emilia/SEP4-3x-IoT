@@ -5,6 +5,7 @@ using RepositoryContracts;
 
 namespace Controllers;
 
+[Authorize]
 [ApiController]
 [Route("rooms")]
 public class RoomController : ControllerBase

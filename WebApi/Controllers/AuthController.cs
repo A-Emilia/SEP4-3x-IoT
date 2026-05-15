@@ -6,15 +6,18 @@ using RepositoryContracts;
 
 namespace Controllers;
 
+[AllowAnonymous]
 [ApiController]
 [Route("auth")]
 public class AuthController : ControllerBase
 {
     private readonly IUserRepository _userRepo;
+    private readonly JwtTokenService _jwtService;
 
-    public AuthController(IUserRepository userRepository)
+    public AuthController(IUserRepository userRepository, JwtTokenService jwtService)
     {
         _userRepo = userRepository;
+        _jwtService = jwtService;
     }
 
     // POST /auth/register
@@ -80,10 +83,13 @@ public class AuthController : ControllerBase
         if (!passwordIsValid)
             return Unauthorized("Invalid name or password.");
 
+        var token = _jwtService.CreateToken(user);
+
         return Ok(new
         {
             message = "Login successful.",
-            user = UserResponse.FromUser(user)
+            user = UserResponse.FromUser(user),
+            token = token
         });
     }
 }
