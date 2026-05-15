@@ -196,6 +196,6 @@ int main(void)
             printf("Failed to read DHT11. Light: %u\n", light);
         }
 
-        _delay_ms(2000);
+        _delay_ms(900000); //900000
     }
 }

@@ -9,7 +9,7 @@ public class MeasurementRepository : IMeasurementRepository {
     private readonly IMongoCollection<Measurement> _measurements;
 
     public MeasurementRepository(IMongoDatabase database) {
-        _measurements = database.GetCollection<Measurement>("measurement_data");
+        _measurements = database.GetCollection<Measurement>("measurements");
     }
 
     public async Task<Measurement> CreateAsync(Measurement measurement) {
