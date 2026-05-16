@@ -58,6 +58,7 @@ public class AuthController : ControllerBase
 
             return Ok(new
             {
+                success = true,
                 message = "User registered.",
                 user = UserResponse.FromUser(createdUser)
             });
@@ -98,6 +99,7 @@ public class AuthController : ControllerBase
 
         return Ok(new
         {
+            success = true,
             message = "Login successful.",
             user = UserResponse.FromUser(user),
             token = token
