@@ -1,5 +1,6 @@
 using Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Npgsql;
 using RepositoryContracts;
 
