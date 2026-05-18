@@ -4,8 +4,43 @@ using Repositories;
 using Repositories.PostgreSQL;
 using RepositoryContracts;
 using WebApi.TCP;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+
+var jwtKey = jwtSettings["Key"]
+    ?? throw new InvalidOperationException("JWT Key is missing.");
+
+var key = Encoding.UTF8.GetBytes(jwtKey);
+
+var issuer = jwtSettings["Issuer"]
+    ?? throw new InvalidOperationException("JWT Issuer is missing.");
+
+var audience = jwtSettings["Audience"]
+    ?? throw new InvalidOperationException("JWT Audience is missing.");
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new SymmetricSecurityKey(key)
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -15,6 +50,17 @@ builder.Services.AddControllers()
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173", "https://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 var connectionString =
     "mongodb://mongodb:mongodb@localhost:27018/measurement_data?authSource=admin";
@@ -41,6 +87,8 @@ builder.Services.AddScoped<IUserRepository>(_ => new UserRepository(postgresConn
 builder.Services.AddScoped<IRoomRepository>(_ => new RoomRepository(postgresConnectionString));
 builder.Services.AddScoped<IDeviceRepository>(_ => new DeviceRepository(postgresConnectionString));
 
+builder.Services.AddScoped<JwtTokenService>();
+
 builder.Services.AddHostedService<TCPService>();
 
 var app = builder.Build();
@@ -50,6 +98,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors("AllowFrontend");
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

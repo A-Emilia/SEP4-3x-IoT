@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using RepositoryContracts;
 
 namespace Controllers;
 
+[Authorize]
 [ApiController]
 [Route("sensor-data")]
 public class MeasurementController : ControllerBase
