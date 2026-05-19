@@ -9,10 +9,14 @@ namespace Controllers;
 public class DeviceController : ControllerBase
 {
     private readonly IDeviceRepository _deviceRepo;
+    private readonly IDeviceActionLogRepository _actionLogRepo;
 
-    public DeviceController(IDeviceRepository deviceRepository)
+    public DeviceController(
+        IDeviceRepository deviceRepository,
+        IDeviceActionLogRepository actionLogRepository)
     {
         _deviceRepo = deviceRepository;
+        _actionLogRepo = actionLogRepository;
     }
 
     // POST /devices
@@ -105,20 +109,37 @@ public class DeviceController : ControllerBase
             return BadRequest("Room id is required.");
 
         if (!IsValidStateForDevice(request.Device, request.State))
-        {
             return BadRequest($"{request.State} is not a valid state for {request.Device}.");
-        }
 
         try
         {
+            var previousState = await _deviceRepo.GetDeviceState(request.RoomId, request.Device);
+
+            if (previousState == request.State)
+            {
+                return Ok(new
+                {
+                    message = "Device state is already set.",
+                    roomId = request.RoomId, //can adjust to MAL's needs
+                    device = request.Device,
+                    state = request.State
+                });
+            }
+
             await _deviceRepo.SetState(request.RoomId, request.Device, request.State);
+
+            var log = await _actionLogRepo.CreateAsync(new DeviceActionLog
+            {
+                RoomId = request.RoomId,
+                DeviceType = request.Device,
+                PreviousState = previousState,
+                NewState = request.State
+            });
 
             return Ok(new
             {
                 message = "Device state updated.",
-                roomId = request.RoomId,
-                device = request.Device,
-                state = request.State
+                actionLog = log //can remove based on if MAL needs it or not
             });
         }
         catch (KeyNotFoundException ex)
@@ -129,6 +150,22 @@ public class DeviceController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+    }
+
+    // GET /devices/actions
+    [HttpGet("actions")]
+    public async Task<IActionResult> GetAllDeviceActions()
+    {
+        var logs = await _actionLogRepo.GetAllAsync();
+        return Ok(logs);
+    }
+
+    // GET /devices/room/{roomId}/actions
+    [HttpGet("room/{roomId}/actions")]
+    public async Task<IActionResult> GetDeviceActionsForRoom(string roomId)
+    {
+        var logs = await _actionLogRepo.GetByRoomIdAsync(roomId);
+        return Ok(logs);
     }
 
     private static bool IsValidStateForDevice(DeviceType device, DeviceState state)
