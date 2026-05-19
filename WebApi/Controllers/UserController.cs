@@ -3,9 +3,11 @@ using Entities.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using RepositoryContracts;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Controllers;
 
+[Authorize]
 [ApiController]
 [Route("user")]
 public class UserController : ControllerBase
@@ -41,6 +43,12 @@ public class UserController : ControllerBase
 
         if (user.Name.Length > 16)
             return BadRequest("User name cannot be longer than 16 characters.");
+
+        if (string.IsNullOrWhiteSpace(user.Email))
+            return BadRequest("Email is required.");
+
+        if (!IsValidEmail(user.Email))
+            return BadRequest("Invalid email format.");
 
         user.Id = id;
 
@@ -85,6 +93,19 @@ public class UserController : ControllerBase
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
         {
             return Conflict("This user cannot be deleted because they still have rooms assigned.");
+        }
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
         }
     }
 }
