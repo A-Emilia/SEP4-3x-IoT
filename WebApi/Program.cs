@@ -86,6 +86,8 @@ string postgresConnectionString = builder.Configuration.GetConnectionString("Pos
 builder.Services.AddScoped<IUserRepository>(_ => new UserRepository(postgresConnectionString));
 builder.Services.AddScoped<IRoomRepository>(_ => new RoomRepository(postgresConnectionString));
 builder.Services.AddScoped<IDeviceRepository>(_ => new DeviceRepository(postgresConnectionString));
+builder.Services.AddScoped<IDeviceActionLogRepository>(_ =>
+    new DeviceActionLogRepository(postgresConnectionString));
 
 builder.Services.AddScoped<JwtTokenService>();
 
