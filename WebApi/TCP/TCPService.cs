@@ -104,7 +104,8 @@ public class TCPService : BackgroundService
         var heaterState = await deviceRepository.GetDeviceState(SharedRoomId, DeviceType.Heater);
         var windowState = await deviceRepository.GetDeviceState(SharedRoomId, DeviceType.Window);
         var curtainState = await deviceRepository.GetDeviceState(SharedRoomId, DeviceType.Curtain);
-
+        // var humidifierState = await deviceRepository.GetDeviceState(SharedRoomId, DeviceType.Humidifier); TODO check if this works
+        
         if (heaterState == DeviceState.On)
         {
             measurement.Temperature *= 1.1m;
@@ -119,6 +120,11 @@ public class TCPService : BackgroundService
         {
             measurement.Light *= 0.3;
         }
+        
+        // if (curtainState == DeviceState.Closed)
+        // {
+        //      measurement.Humidity *= 1.4;
+        // }
 
         measurement.Temperature = Math.Round(measurement.Temperature, 2);
         measurement.Light = Math.Round(measurement.Light, 2);
