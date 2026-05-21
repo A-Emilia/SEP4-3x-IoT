@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories", "Repositorie
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryContracts", "RepositoryContracts\RepositoryContracts.csproj", "{CD7B8CB9-3454-4799-A103-450EF119CA95}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SEP4.Tests", "SEP4.Tests\SEP4.Tests.csproj", "{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,18 @@ Global
 		{CD7B8CB9-3454-4799-A103-450EF119CA95}.Release|x64.Build.0 = Release|Any CPU
 		{CD7B8CB9-3454-4799-A103-450EF119CA95}.Release|x86.ActiveCfg = Release|Any CPU
 		{CD7B8CB9-3454-4799-A103-450EF119CA95}.Release|x86.Build.0 = Release|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Debug|x64.Build.0 = Debug|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Debug|x86.Build.0 = Debug|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Release|x64.ActiveCfg = Release|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Release|x64.Build.0 = Release|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Release|x86.ActiveCfg = Release|Any CPU
+		{823860E6-7525-4A43-91B9-B1D6ACA7BCB4}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
