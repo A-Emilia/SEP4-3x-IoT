@@ -132,6 +132,7 @@ public class DeviceActionLogRepository : IDeviceActionLogRepository
             DeviceType.Heater => "Heater",
             DeviceType.Window => "Window Servo",
             DeviceType.Curtain => "Curtain Servo",
+            DeviceType.Humidifier => "Humidifier",
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
     }
@@ -143,6 +144,7 @@ public class DeviceActionLogRepository : IDeviceActionLogRepository
             "Heater" => DeviceType.Heater,
             "Window Servo" => DeviceType.Window,
             "Curtain Servo" => DeviceType.Curtain,
+            "Humidifier" => DeviceType.Humidifier,
             _ => throw new InvalidOperationException($"Unknown device type: {type}")
         };
     }
@@ -170,6 +172,13 @@ public class DeviceActionLogRepository : IDeviceActionLogRepository
                 DeviceState.Open => "On/Open",
                 DeviceState.Closed => "Off/Closed",
                 _ => throw new InvalidOperationException("Curtain can only be Open or Closed.")
+            },
+            
+            DeviceType.Humidifier => state switch
+            {
+                DeviceState.Open => "On/Open",
+                DeviceState.Closed => "Off/Closed",
+                _ => throw new InvalidOperationException("Humidifier can only be On or Off.")
             },
 
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
@@ -199,6 +208,13 @@ public class DeviceActionLogRepository : IDeviceActionLogRepository
                 "On/Open" => DeviceState.Open,
                 "Off/Closed" => DeviceState.Closed,
                 _ => throw new InvalidOperationException($"Unknown curtain state: {state}")
+            },
+            
+            DeviceType.Humidifier => state switch
+            {
+                "On/Open" => DeviceState.Open,
+                "Off/Closed" => DeviceState.Closed,
+                _ => throw new InvalidOperationException($"Unknown curtain state: {state}.")
             },
 
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)

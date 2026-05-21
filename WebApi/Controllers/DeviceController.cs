@@ -175,6 +175,7 @@ public class DeviceController : ControllerBase
             DeviceType.Heater => state is DeviceState.On or DeviceState.Off,
             DeviceType.Window => state is DeviceState.Open or DeviceState.Closed,
             DeviceType.Curtain => state is DeviceState.Open or DeviceState.Closed,
+            DeviceType.Humidifier => state is DeviceState.On or DeviceState.Off,
             _ => false
         };
     }
