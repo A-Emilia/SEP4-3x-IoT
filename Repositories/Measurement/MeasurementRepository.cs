@@ -4,30 +4,37 @@ using RepositoryContracts;
 
 namespace Repositories;
 
-public class MeasurementRepository : IMeasurementRepository {
-
+public class MeasurementRepository : IMeasurementRepository
+{
     private readonly IMongoCollection<Measurement> _measurements;
 
-    public MeasurementRepository(IMongoDatabase database) {
+    public MeasurementRepository(IMongoDatabase database)
+    {
         _measurements = database.GetCollection<Measurement>("measurements");
     }
 
-    public async Task<Measurement> CreateAsync(Measurement measurement) {
+    public async Task<Measurement> CreateAsync(Measurement measurement)
+    {
         await _measurements.InsertOneAsync(measurement);
         return measurement;
     }
 
-    public async Task<List<Measurement>> GetMany(DateTime start, DateTime end) {
+    public async Task<Measurement?> GetMostRecent(string roomId)
+    {
         return await _measurements
-            .Find(x => x.TimestampUtc >= start && x.TimestampUtc <= end)
-            .ToListAsync();
-    }
-
-    public async Task<Measurement> GetMostRecent() {
-        return await _measurements
-        // MongoDB's C# driver just always requires a filter, hence why the Find() is needed.
-            .Find(_ => true)
+            .Find(x => x.RoomId == roomId)
             .SortByDescending(x => x.TimestampUtc)
             .FirstOrDefaultAsync();
+    }
+
+    public async Task<List<Measurement>> GetMany(string roomId, DateTime start, DateTime end)
+    {
+        return await _measurements
+            .Find(x =>
+                x.RoomId == roomId &&
+                x.TimestampUtc >= start &&
+                x.TimestampUtc <= end)
+            .SortByDescending(x => x.TimestampUtc)
+            .ToListAsync();
     }
 }

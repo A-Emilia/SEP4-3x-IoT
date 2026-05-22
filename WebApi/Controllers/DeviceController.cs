@@ -152,22 +152,6 @@ public class DeviceController : ControllerBase
         }
     }
 
-    // GET /devices/actions
-    [HttpGet("actions")]
-    public async Task<IActionResult> GetAllDeviceActions()
-    {
-        var logs = await _actionLogRepo.GetAllAsync();
-        return Ok(logs);
-    }
-
-    // GET /devices/room/{roomId}/actions
-    [HttpGet("room/{roomId}/actions")]
-    public async Task<IActionResult> GetDeviceActionsForRoom(string roomId)
-    {
-        var logs = await _actionLogRepo.GetByRoomIdAsync(roomId);
-        return Ok(logs);
-    }
-
     private static bool IsValidStateForDevice(DeviceType device, DeviceState state)
     {
         return device switch

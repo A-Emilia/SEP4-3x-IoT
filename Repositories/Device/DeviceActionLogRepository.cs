@@ -94,6 +94,67 @@ public class DeviceActionLogRepository : IDeviceActionLogRepository
 
         return logs;
     }
+    
+    public async Task<List<DeviceActionLog>> GetByTimestampAsync(DateTime from, DateTime to)
+    {
+        const string sql = @"
+        SELECT id, room_id, device_type::text, previous_state::text, new_state::text, timestamp_utc
+        FROM device_action_log
+        WHERE timestamp_utc >= @from
+          AND timestamp_utc <= @to
+        ORDER BY timestamp_utc DESC;
+    ";
+
+        await using var connection = await CreateConnectionAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("from", from);
+        command.Parameters.AddWithValue("to", to);
+
+        await using var reader = await command.ExecuteReaderAsync();
+
+        var logs = new List<DeviceActionLog>();
+
+        while (await reader.ReadAsync())
+        {
+            logs.Add(ReadLog(reader));
+        }
+
+        return logs;
+    }
+
+    public async Task<List<DeviceActionLog>> GetByRoomIdAndTimestampAsync(
+        string roomId,
+        DateTime from,
+        DateTime to)
+    {
+        const string sql = @"
+        SELECT id, room_id, device_type::text, previous_state::text, new_state::text, timestamp_utc
+        FROM device_action_log
+        WHERE room_id = @roomId
+          AND timestamp_utc >= @from
+          AND timestamp_utc <= @to
+        ORDER BY timestamp_utc DESC;
+    ";
+
+        await using var connection = await CreateConnectionAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("roomId", roomId);
+        command.Parameters.AddWithValue("from", from);
+        command.Parameters.AddWithValue("to", to);
+
+        await using var reader = await command.ExecuteReaderAsync();
+
+        var logs = new List<DeviceActionLog>();
+
+        while (await reader.ReadAsync())
+        {
+            logs.Add(ReadLog(reader));
+        }
+
+        return logs;
+    }
 
     private async Task<NpgsqlConnection> CreateConnectionAsync()
     {
