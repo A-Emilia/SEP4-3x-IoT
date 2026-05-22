@@ -22,10 +22,12 @@ public class MeasurementRepositoryIntegrationTests
     {
         // Arrange
         await _database.DropCollectionAsync("measurements");
+
         var repo = new MeasurementRepository(_database);
 
         var measurement = new Measurement
         {
+            RoomId = "room1",
             Temperature = 25,
             Humidity = 50,
             TimestampUtc = DateTime.UtcNow
@@ -38,6 +40,7 @@ public class MeasurementRepositoryIntegrationTests
         Assert.NotNull(createdMeasurement);
         Assert.Equal(measurement.Temperature, createdMeasurement.Temperature);
         Assert.Equal(measurement.Humidity, createdMeasurement.Humidity);
+        Assert.Equal("room1", createdMeasurement.RoomId);
     }
 
     [Fact]
@@ -45,10 +48,12 @@ public class MeasurementRepositoryIntegrationTests
     {
         // Arrange
         await _database.DropCollectionAsync("measurements");
+
         var repo = new MeasurementRepository(_database);
 
         var oldMeasurement = new Measurement
         {
+            RoomId = "room1",
             Temperature = 20,
             Humidity = 40,
             TimestampUtc = DateTime.UtcNow.AddMinutes(-10)
@@ -56,6 +61,7 @@ public class MeasurementRepositoryIntegrationTests
 
         var newMeasurement = new Measurement
         {
+            RoomId = "room1",
             Temperature = 30,
             Humidity = 60,
             TimestampUtc = DateTime.UtcNow
@@ -65,7 +71,7 @@ public class MeasurementRepositoryIntegrationTests
         await repo.CreateAsync(newMeasurement);
 
         // Act
-        var result = await repo.GetMostRecent();
+        var result = await repo.GetMostRecent("room1");
 
         // Assert
         Assert.NotNull(result);
@@ -77,10 +83,12 @@ public class MeasurementRepositoryIntegrationTests
     {
         // Arrange
         await _database.DropCollectionAsync("measurements");
+
         var repo = new MeasurementRepository(_database);
 
         var measurement = new Measurement
         {
+            RoomId = "room1",
             Temperature = 22,
             Humidity = 55,
             TimestampUtc = DateTime.UtcNow
@@ -92,40 +100,42 @@ public class MeasurementRepositoryIntegrationTests
         var to = DateTime.UtcNow.AddHours(1);
 
         // Act
-        var result = await repo.GetMany(from, to);
+        var result = await repo.GetMany("room1", from, to);
 
         // Assert
         Assert.NotEmpty(result);
     }
 
     [Fact]
-public async Task GetMostRecent_WhenNoMeasurementsExist_ShouldReturnNull()
-{
-    // Arrange
-    await _database.DropCollectionAsync("measurements");
-    var repo = new MeasurementRepository(_database);
+    public async Task GetMostRecent_WhenNoMeasurementsExist_ShouldReturnNull()
+    {
+        // Arrange
+        await _database.DropCollectionAsync("measurements");
 
-    // Act
-    var result = await repo.GetMostRecent();
+        var repo = new MeasurementRepository(_database);
 
-    // Assert
-    Assert.Null(result);
-}
+        // Act
+        var result = await repo.GetMostRecent("room1");
 
-[Fact]
-public async Task GetMany_WithNoMatches_ShouldReturnEmptyList()
-{
-    // Arrange
-    await _database.DropCollectionAsync("measurements");
-    var repo = new MeasurementRepository(_database);
+        // Assert
+        Assert.Null(result);
+    }
 
-    var from = DateTime.UtcNow.AddYears(-10);
-    var to = DateTime.UtcNow.AddYears(-9);
+    [Fact]
+    public async Task GetMany_WithNoMatches_ShouldReturnEmptyList()
+    {
+        // Arrange
+        await _database.DropCollectionAsync("measurements");
 
-    // Act
-    var result = await repo.GetMany(from, to);
+        var repo = new MeasurementRepository(_database);
 
-    // Assert
-    Assert.Empty(result);
-}
+        var from = DateTime.UtcNow.AddYears(-10);
+        var to = DateTime.UtcNow.AddYears(-9);
+
+        // Act
+        var result = await repo.GetMany("room1", from, to);
+
+        // Assert
+        Assert.Empty(result);
+    }
 }

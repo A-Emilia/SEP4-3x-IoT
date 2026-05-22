@@ -22,20 +22,28 @@ public class MeasurementControllerTests
         var to = DateTime.Now.AddDays(-1);
 
         // Act
-        var result = await controller.GetHistoryBasedOnTimestamp(from, to);
+        var result = await controller.GetHistoryBasedOnTimestamp(
+            "room1",
+            from,
+            to
+        );
 
         // Assert
         Assert.IsType<BadRequestObjectResult>(result);
     }
 
     [Fact]
-    public async Task GetHistory_WithNoMeasurements_ShouldReturnNotFound()
+    public async Task GetHistory_WithNoMeasurements_ShouldReturnOk()
     {
         // Arrange
         var mockMeasurementRepo = new Mock<IMeasurementRepository>();
 
         mockMeasurementRepo.Setup(r =>
-                r.GetMany(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+                r.GetMany(
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>(),
+                    It.IsAny<DateTime>()
+                ))
             .ReturnsAsync(new List<Measurement>());
 
         var controller = new MeasurementController(
@@ -46,10 +54,14 @@ public class MeasurementControllerTests
         var to = DateTime.Now;
 
         // Act
-        var result = await controller.GetHistoryBasedOnTimestamp(from, to);
+        var result = await controller.GetHistoryBasedOnTimestamp(
+            "room1",
+            from,
+            to
+        );
 
         // Assert
-        Assert.IsType<NotFoundObjectResult>(result);
+        Assert.IsType<OkObjectResult>(result);
     }
 
     [Fact]
@@ -59,13 +71,17 @@ public class MeasurementControllerTests
         var mockMeasurementRepo = new Mock<IMeasurementRepository>();
 
         var measurements = new List<Measurement>
-    {
-        new Measurement(),
-        new Measurement()
-    };
+        {
+            new Measurement(),
+            new Measurement()
+        };
 
         mockMeasurementRepo.Setup(r =>
-                r.GetMany(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+                r.GetMany(
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>(),
+                    It.IsAny<DateTime>()
+                ))
             .ReturnsAsync(measurements);
 
         var controller = new MeasurementController(
@@ -76,7 +92,11 @@ public class MeasurementControllerTests
         var to = DateTime.Now;
 
         // Act
-        var result = await controller.GetHistoryBasedOnTimestamp(from, to);
+        var result = await controller.GetHistoryBasedOnTimestamp(
+            "room1",
+            from,
+            to
+        );
 
         // Assert
         Assert.IsType<OkObjectResult>(result);
@@ -88,7 +108,8 @@ public class MeasurementControllerTests
         // Arrange
         var mockMeasurementRepo = new Mock<IMeasurementRepository>();
 
-        mockMeasurementRepo.Setup(r => r.GetMostRecent())
+        mockMeasurementRepo.Setup(r =>
+                r.GetMostRecent(It.IsAny<string>()))
             .ReturnsAsync((Measurement?)null);
 
         var controller = new MeasurementController(
@@ -96,7 +117,7 @@ public class MeasurementControllerTests
         );
 
         // Act
-        var result = await controller.GetCurrentAsync();
+        var result = await controller.GetCurrentAsync("room1");
 
         // Assert
         Assert.IsType<NotFoundObjectResult>(result);
@@ -108,15 +129,16 @@ public class MeasurementControllerTests
         // Arrange
         var mockMeasurementRepo = new Mock<IMeasurementRepository>();
 
-        mockMeasurementRepo.Setup(r => r.GetMostRecent())
-            .ReturnsAsync((Measurement?)new Measurement());
+        mockMeasurementRepo.Setup(r =>
+                r.GetMostRecent(It.IsAny<string>()))
+            .ReturnsAsync(new Measurement());
 
         var controller = new MeasurementController(
             mockMeasurementRepo.Object
         );
 
         // Act
-        var result = await controller.GetCurrentAsync();
+        var result = await controller.GetCurrentAsync("room1");
 
         // Assert
         Assert.IsType<OkObjectResult>(result);
@@ -136,7 +158,11 @@ public class MeasurementControllerTests
         var to = DateTime.Now;
 
         // Act
-        var result = await controller.GetHistoryBasedOnTimestamp(from, to);
+        var result = await controller.GetHistoryBasedOnTimestamp(
+            "room1",
+            from,
+            to
+        );
 
         // Assert
         Assert.IsType<BadRequestObjectResult>(result);
@@ -156,7 +182,11 @@ public class MeasurementControllerTests
         var to = default(DateTime);
 
         // Act
-        var result = await controller.GetHistoryBasedOnTimestamp(from, to);
+        var result = await controller.GetHistoryBasedOnTimestamp(
+            "room1",
+            from,
+            to
+        );
 
         // Assert
         Assert.IsType<BadRequestObjectResult>(result);
