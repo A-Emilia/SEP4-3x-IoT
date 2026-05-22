@@ -52,7 +52,8 @@ INSERT INTO actuator (id, room_id, state, type)
 VALUES
     ('heater-shared', 'shared', 'Off/Closed', 'Heater'),
     ('window-shared', 'shared', 'Off/Closed', 'Window Servo'),
-    ('curtain-shared', 'shared', 'On/Open', 'Curtain Servo');
+    ('curtain-shared', 'shared', 'On/Open', 'Curtain Servo'),
+    ('humidifier-shared', 'shared', 'On/Open', 'Humidifier Servo');
 
 INSERT INTO device_action_log (room_id, device_type, previous_state, new_state)
 VALUES

@@ -182,6 +182,7 @@ public class DeviceRepository : IDeviceRepository
             DeviceType.Heater => "Heater",
             DeviceType.Window => "Window Servo",
             DeviceType.Curtain => "Curtain Servo",
+            DeviceType.Humidifier => "Humidifier",
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
     }
@@ -193,6 +194,7 @@ public class DeviceRepository : IDeviceRepository
             "Heater" => DeviceType.Heater,
             "Window Servo" => DeviceType.Window,
             "Curtain Servo" => DeviceType.Curtain,
+            "Humidifier" => DeviceType.Humidifier,
             _ => throw new InvalidOperationException($"Unknown device type: {type}")
         };
     }
@@ -220,6 +222,13 @@ public class DeviceRepository : IDeviceRepository
                 DeviceState.Open => "On/Open",
                 DeviceState.Closed => "Off/Closed",
                 _ => throw new InvalidOperationException("Curtain can only be Open or Closed.")
+            },
+            
+            DeviceType.Humidifier => state switch
+            {
+                DeviceState.Open => "On/Open",
+                DeviceState.Closed => "Off/Closed",
+                _ => throw new InvalidOperationException("Humidifier can only be Open or Closed.")
             },
 
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
@@ -250,6 +259,14 @@ public class DeviceRepository : IDeviceRepository
                 "Off/Closed" => DeviceState.Closed,
                 _ => throw new InvalidOperationException($"Unknown curtain state: {state}")
             },
+            
+            DeviceType.Humidifier => state switch
+            {
+                "On/Open" => DeviceState.Open,
+                "Off/Closed" => DeviceState.Closed,
+                _ => throw new InvalidOperationException($"Unknown curtain state: {state}")
+            },
+            
 
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };

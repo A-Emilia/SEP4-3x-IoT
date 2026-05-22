@@ -16,25 +16,31 @@ public class MeasurementController : ControllerBase
         _measurementRepo = measurementRepo;
     }
 
-    // GET /sensor-data/current
+    // GET /sensor-data/current?roomId={roomId}
     [HttpGet("current")]
-    public async Task<IActionResult> GetCurrentAsync()
+    public async Task<IActionResult> GetCurrentAsync([FromQuery] string roomId)
     {
-        var latest = await _measurementRepo.GetMostRecent();
+        if (string.IsNullOrWhiteSpace(roomId))
+            return BadRequest("'roomId' query parameter is required.");
+
+        var latest = await _measurementRepo.GetMostRecent(roomId);
 
         if (latest == null)
-            return NotFound("No measurements yet.");
+            return NotFound("No measurements yet for this room.");
 
         return Ok(latest);
     }
 
-    // GET /sensor-data/history?from=&to=
-    // For example: /sensor-data/history?from=2026-04-22T00:00:00Z&to=2026-04-22T23:59:59Z
+    // GET /sensor-data/history?roomId={roomId}&from=&to=
     [HttpGet("history")]
     public async Task<IActionResult> GetHistoryBasedOnTimestamp(
+        [FromQuery] string roomId,
         [FromQuery] DateTime from,
         [FromQuery] DateTime to)
     {
+        if (string.IsNullOrWhiteSpace(roomId))
+            return BadRequest("'roomId' query parameter is required.");
+
         if (from == default)
             return BadRequest("'from' query parameter is required.");
 
@@ -44,10 +50,7 @@ public class MeasurementController : ControllerBase
         if (from > to)
             return BadRequest("'from' cannot be later than 'to'.");
 
-        var measurements = await _measurementRepo.GetMany(from, to);
-
-        if (measurements.Count == 0)
-            return NotFound("No measurements found in the given time period.");
+        var measurements = await _measurementRepo.GetMany(roomId, from, to);
 
         return Ok(measurements);
     }
