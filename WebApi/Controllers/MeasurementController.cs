@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using RepositoryContracts;
 
@@ -9,24 +10,44 @@ namespace Controllers;
 [Route("sensor-data")]
 public class MeasurementController : ControllerBase
 {
-    private readonly IMeasurementRepository _measurementRepo;
+    private const string SharedMeasurementRoomId = "shared";
 
-    public MeasurementController(IMeasurementRepository measurementRepo)
+    private readonly IMeasurementRepository _measurementRepo;
+    private readonly IRoomRepository _roomRepo;
+
+    public MeasurementController(
+        IMeasurementRepository measurementRepo,
+        IRoomRepository roomRepo)
     {
         _measurementRepo = measurementRepo;
+        _roomRepo = roomRepo;
     }
 
     // GET /sensor-data/current?roomId={roomId}
     [HttpGet("current")]
     public async Task<IActionResult> GetCurrentAsync([FromQuery] string roomId)
     {
+        var userId = GetCurrentUserId();
+
+        if (userId == null)
+            return Unauthorized("User id was not found in token.");
+
         if (string.IsNullOrWhiteSpace(roomId))
             return BadRequest("'roomId' query parameter is required.");
 
-        var latest = await _measurementRepo.GetMostRecent(roomId);
+        try
+        {
+            await _roomRepo.GetSingleForUserAsync(roomId, userId);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound("Room was not found for this user.");
+        }
+
+        var latest = await _measurementRepo.GetMostRecent(SharedMeasurementRoomId);
 
         if (latest == null)
-            return NotFound("No measurements yet for this room.");
+            return NotFound("No measurements yet.");
 
         return Ok(latest);
     }
@@ -38,6 +59,11 @@ public class MeasurementController : ControllerBase
         [FromQuery] DateTime from,
         [FromQuery] DateTime to)
     {
+        var userId = GetCurrentUserId();
+
+        if (userId == null)
+            return Unauthorized("User id was not found in token.");
+
         if (string.IsNullOrWhiteSpace(roomId))
             return BadRequest("'roomId' query parameter is required.");
 
@@ -50,8 +76,28 @@ public class MeasurementController : ControllerBase
         if (from > to)
             return BadRequest("'from' cannot be later than 'to'.");
 
-        var measurements = await _measurementRepo.GetMany(roomId, from, to);
+        try
+        {
+            await _roomRepo.GetSingleForUserAsync(roomId, userId);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound("Room was not found for this user.");
+        }
+
+        var measurements = await _measurementRepo.GetMany(
+            SharedMeasurementRoomId,
+            from,
+            to
+        );
 
         return Ok(measurements);
+    }
+
+    private string? GetCurrentUserId()
+    {
+        return User.FindFirst("userId")?.Value
+               ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+               ?? User.FindFirst("sub")?.Value;
     }
 }
