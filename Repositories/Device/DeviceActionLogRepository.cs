@@ -94,6 +94,67 @@ public class DeviceActionLogRepository : IDeviceActionLogRepository
 
         return logs;
     }
+    
+    public async Task<List<DeviceActionLog>> GetByTimestampAsync(DateTime from, DateTime to)
+    {
+        const string sql = @"
+        SELECT id, room_id, device_type::text, previous_state::text, new_state::text, timestamp_utc
+        FROM device_action_log
+        WHERE timestamp_utc >= @from
+          AND timestamp_utc <= @to
+        ORDER BY timestamp_utc DESC;
+    ";
+
+        await using var connection = await CreateConnectionAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("from", from);
+        command.Parameters.AddWithValue("to", to);
+
+        await using var reader = await command.ExecuteReaderAsync();
+
+        var logs = new List<DeviceActionLog>();
+
+        while (await reader.ReadAsync())
+        {
+            logs.Add(ReadLog(reader));
+        }
+
+        return logs;
+    }
+
+    public async Task<List<DeviceActionLog>> GetByRoomIdAndTimestampAsync(
+        string roomId,
+        DateTime from,
+        DateTime to)
+    {
+        const string sql = @"
+        SELECT id, room_id, device_type::text, previous_state::text, new_state::text, timestamp_utc
+        FROM device_action_log
+        WHERE room_id = @roomId
+          AND timestamp_utc >= @from
+          AND timestamp_utc <= @to
+        ORDER BY timestamp_utc DESC;
+    ";
+
+        await using var connection = await CreateConnectionAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("roomId", roomId);
+        command.Parameters.AddWithValue("from", from);
+        command.Parameters.AddWithValue("to", to);
+
+        await using var reader = await command.ExecuteReaderAsync();
+
+        var logs = new List<DeviceActionLog>();
+
+        while (await reader.ReadAsync())
+        {
+            logs.Add(ReadLog(reader));
+        }
+
+        return logs;
+    }
 
     private async Task<NpgsqlConnection> CreateConnectionAsync()
     {
@@ -132,6 +193,7 @@ public class DeviceActionLogRepository : IDeviceActionLogRepository
             DeviceType.Heater => "Heater",
             DeviceType.Window => "Window Servo",
             DeviceType.Curtain => "Curtain Servo",
+            DeviceType.Humidifier => "Humidifier",
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
     }
@@ -143,6 +205,7 @@ public class DeviceActionLogRepository : IDeviceActionLogRepository
             "Heater" => DeviceType.Heater,
             "Window Servo" => DeviceType.Window,
             "Curtain Servo" => DeviceType.Curtain,
+            "Humidifier" => DeviceType.Humidifier,
             _ => throw new InvalidOperationException($"Unknown device type: {type}")
         };
     }
@@ -170,6 +233,13 @@ public class DeviceActionLogRepository : IDeviceActionLogRepository
                 DeviceState.Open => "On/Open",
                 DeviceState.Closed => "Off/Closed",
                 _ => throw new InvalidOperationException("Curtain can only be Open or Closed.")
+            },
+            
+            DeviceType.Humidifier => state switch
+            {
+                DeviceState.Open => "On/Open",
+                DeviceState.Closed => "Off/Closed",
+                _ => throw new InvalidOperationException("Humidifier can only be On or Off.")
             },
 
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
@@ -199,6 +269,13 @@ public class DeviceActionLogRepository : IDeviceActionLogRepository
                 "On/Open" => DeviceState.Open,
                 "Off/Closed" => DeviceState.Closed,
                 _ => throw new InvalidOperationException($"Unknown curtain state: {state}")
+            },
+            
+            DeviceType.Humidifier => state switch
+            {
+                "On/Open" => DeviceState.Open,
+                "Off/Closed" => DeviceState.Closed,
+                _ => throw new InvalidOperationException($"Unknown curtain state: {state}.")
             },
 
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)

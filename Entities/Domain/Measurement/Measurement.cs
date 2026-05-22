@@ -7,7 +7,7 @@ public class Measurement
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = null!; //TODO MongoDB ID
+    public string Id { get; set; } = null!;
 
     [BsonElement("roomId")]
     public string RoomId { get; set; } = "";

@@ -4,5 +4,6 @@ public enum DeviceType
 {
     Heater,
     Window,
-    Curtain
+    Curtain,
+    Humidifier
 }
