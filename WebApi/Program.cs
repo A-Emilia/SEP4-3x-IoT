@@ -62,11 +62,11 @@ builder.Services.AddCors(options =>
     });
 });
 
-var connectionString =
-    "mongodb://mongodb:mongodb@localhost:27018/measurement_data?authSource=admin";
+string mongoConnectionString = builder.Configuration["AZURE_COSMOS_CONNECTIONSTRING"]
+    ?? throw new InvalidOperationException("Missing Azure Cosmos connection string.");
 
 builder.Services.AddSingleton<IMongoClient>(_ =>
-    new MongoClient(connectionString));
+    new MongoClient(mongoConnectionString));
 
 builder.Services.AddSingleton(sp => {
     var client = sp.GetRequiredService<IMongoClient>();
