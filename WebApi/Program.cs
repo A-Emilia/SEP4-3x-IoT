@@ -62,7 +62,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-string mongoConnectionString = builder.Configuration["MONGO_AZURE_CONNECTIONSTRING"]
+string mongoConnectionString = builder.Configuration.GetConnectionString("MONGO_AZURE_CONNECTIONSTRING")
     ?? throw new InvalidOperationException("Missing Azure Cosmos connection string.");
 
 builder.Services.AddSingleton<IMongoClient>(_ =>
