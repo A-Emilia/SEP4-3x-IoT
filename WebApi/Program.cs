@@ -62,7 +62,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-string mongoConnectionString = builder.Configuration["AZURE_COSMOS_CONNECTIONSTRING"]
+string mongoConnectionString = builder.Configuration["MONGO_AZURE_CONNECTIONSTRING"]
     ?? throw new InvalidOperationException("Missing Azure Cosmos connection string.");
 
 builder.Services.AddSingleton<IMongoClient>(_ =>
@@ -80,7 +80,7 @@ builder.Services.AddScoped<IMeasurementRepository, MeasurementRepository>();
  * I need to dependency inject these.
  */
 
-string postgresConnectionString = builder.Configuration.GetConnectionString("Postgres")
+string postgresConnectionString = builder.Configuration.GetConnectionString("AZURE_POSTGRESQL_CONNECTIONSTRING")
         ?? throw new InvalidOperationException("Missing Postgres connection string.");
 
 builder.Services.AddScoped<IUserRepository>(_ => new UserRepository(postgresConnectionString));
