@@ -56,7 +56,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173", "https://localhost:5173")
+            .WithOrigins(
+                "http://localhost:5173", 
+                "https://localhost:5173",
+                "https://alfred-frontend.salmonglacier-afd04ae5.swedencentral.azurecontainerapps.io")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
