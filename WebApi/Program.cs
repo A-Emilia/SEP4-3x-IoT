@@ -73,7 +73,7 @@ builder.Services.AddSingleton<IMongoClient>(_ =>
 
 builder.Services.AddSingleton(sp => {
     var client = sp.GetRequiredService<IMongoClient>();
-    return client.GetDatabase("measurement_data");
+    return client.GetDatabase("measurements");
 });
 
 
