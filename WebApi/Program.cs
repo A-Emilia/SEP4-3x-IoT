@@ -57,7 +57,7 @@ builder.Services.AddCors(options =>
     {
         policy
             .WithOrigins(
-                "http://localhost:5173", 
+                "http://localhost:5173",
                 "https://localhost:5173",
                 "https://alfred-frontend.salmonglacier-afd04ae5.swedencentral.azurecontainerapps.io")
             .AllowAnyHeader()
@@ -66,25 +66,23 @@ builder.Services.AddCors(options =>
 });
 
 string mongoConnectionString = Environment.GetEnvironmentVariable("MONGO_AZURE_CONNECTIONSTRING")
-    ?? throw new InvalidOperationException("Missing Azure Cosmos connection string.");
+    ?? builder.Configuration.GetConnectionString("Mongo")
+    ?? throw new InvalidOperationException("Missing Mongo connection string.");
 
 builder.Services.AddSingleton<IMongoClient>(_ =>
     new MongoClient(mongoConnectionString));
 
-builder.Services.AddSingleton(sp => {
+builder.Services.AddSingleton(sp =>
+{
     var client = sp.GetRequiredService<IMongoClient>();
     return client.GetDatabase("measurements");
 });
 
-
-
 builder.Services.AddScoped<IMeasurementRepository, MeasurementRepository>();
-/*
- * I need to dependency inject these.
- */
 
 string postgresConnectionString = Environment.GetEnvironmentVariable("AZURE_POSTGRESQL_CONNECTIONSTRING")
-        ?? throw new InvalidOperationException("Missing Postgres connection string.");
+    ?? builder.Configuration.GetConnectionString("Postgres")
+    ?? throw new InvalidOperationException("Missing Postgres connection string.");
 
 builder.Services.AddScoped<IUserRepository>(_ => new UserRepository(postgresConnectionString));
 builder.Services.AddScoped<IRoomRepository>(_ => new RoomRepository(postgresConnectionString));
@@ -94,13 +92,14 @@ builder.Services.AddScoped<IDeviceActionLogRepository>(_ =>
 
 builder.Services.AddScoped<JwtTokenService>();
 
-builder.Services.AddHostedService<TCPService>();
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddHttpClient();
+    builder.Services.AddHostedService<TCPService>();
+}
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-}
 app.UseSwagger();
 app.UseSwaggerUI();
 

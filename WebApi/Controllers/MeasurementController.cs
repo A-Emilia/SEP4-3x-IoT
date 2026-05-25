@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using RepositoryContracts;
@@ -21,6 +22,27 @@ public class MeasurementController : ControllerBase
     {
         _measurementRepo = measurementRepo;
         _roomRepo = roomRepo;
+    }
+    
+    // POST /sensor-data/iot
+    [AllowAnonymous]
+    [HttpPost("iot")]
+    public async Task<IActionResult> CreateMeasurementFromIoT(
+        [FromBody] Measurement measurement,
+        [FromHeader(Name = "X-Api-Key")] string? apiKey)
+    {
+        const string ExpectedApiKey = "sep4-iot-secret";
+
+        if (apiKey != ExpectedApiKey)
+            return Unauthorized("Invalid API key.");
+
+        measurement.Id = null!;
+        measurement.RoomId = SharedMeasurementRoomId;
+        measurement.TimestampUtc = DateTime.UtcNow;
+
+        var createdMeasurement = await _measurementRepo.CreateAsync(measurement);
+
+        return Ok(createdMeasurement);
     }
 
     // GET /sensor-data/current?roomId={roomId}
