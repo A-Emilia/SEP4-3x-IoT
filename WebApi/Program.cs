@@ -56,21 +56,24 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173", "https://localhost:5173")
+            .WithOrigins(
+                "http://localhost:5173", 
+                "https://localhost:5173",
+                "https://alfred-frontend.salmonglacier-afd04ae5.swedencentral.azurecontainerapps.io")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
 });
 
-var connectionString =
-    "mongodb://mongodb:mongodb@localhost:27018/measurement_data?authSource=admin";
+string mongoConnectionString = Environment.GetEnvironmentVariable("MONGO_AZURE_CONNECTIONSTRING")
+    ?? throw new InvalidOperationException("Missing Azure Cosmos connection string.");
 
 builder.Services.AddSingleton<IMongoClient>(_ =>
-    new MongoClient(connectionString));
+    new MongoClient(mongoConnectionString));
 
 builder.Services.AddSingleton(sp => {
     var client = sp.GetRequiredService<IMongoClient>();
-    return client.GetDatabase("measurement_data");
+    return client.GetDatabase("measurements");
 });
 
 
@@ -80,7 +83,7 @@ builder.Services.AddScoped<IMeasurementRepository, MeasurementRepository>();
  * I need to dependency inject these.
  */
 
-string postgresConnectionString = builder.Configuration.GetConnectionString("Postgres")
+string postgresConnectionString = Environment.GetEnvironmentVariable("AZURE_POSTGRESQL_CONNECTIONSTRING")
         ?? throw new InvalidOperationException("Missing Postgres connection string.");
 
 builder.Services.AddScoped<IUserRepository>(_ => new UserRepository(postgresConnectionString));
