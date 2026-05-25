@@ -92,12 +92,12 @@ public class RoomRepository : IRoomRepository
     public async Task<Room> UpdateContentAsync(Room room)
     {
         const string sql = @"
-            UPDATE room
-            SET user_id = @userId,
-                name = @name
-            WHERE id = @id
-            RETURNING id, user_id, name;
-        ";
+        UPDATE room
+        SET name = @name
+        WHERE id = @id
+          AND user_id = @userId
+        RETURNING id, user_id, name;
+    ";
 
         await using var connection = await CreateConnectionAsync();
 
@@ -113,21 +113,23 @@ public class RoomRepository : IRoomRepository
             return ReadRoom(reader);
         }
 
-        throw new KeyNotFoundException($"Room with id '{room.Id}' was not found.");
+        throw new KeyNotFoundException($"Room with id '{room.Id}' was not found for this user.");
     }
-
-    public async Task<Room> DeleteAsync(string id)
+    
+    public async Task<Room> DeleteAsync(string id, string userId)
     {
         const string sql = @"
-            DELETE FROM room
-            WHERE id = @id
-            RETURNING id, user_id, name;
-        ";
+        DELETE FROM room
+        WHERE id = @id
+          AND user_id = @userId
+        RETURNING id, user_id, name;
+    ";
 
         await using var connection = await CreateConnectionAsync();
 
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("userId", userId);
 
         await using var reader = await command.ExecuteReaderAsync();
 
@@ -136,9 +138,60 @@ public class RoomRepository : IRoomRepository
             return ReadRoom(reader);
         }
 
-        throw new KeyNotFoundException($"Room with id '{id}' was not found.");
+        throw new KeyNotFoundException($"Room with id '{id}' was not found for this user.");
+    }
+    
+    public async Task<List<Room>> GetManyByUserIdAsync(string userId)
+    {
+        const string sql = @"
+        SELECT id, user_id, name
+        FROM room
+        WHERE user_id = @userId
+        ORDER BY name;
+    ";
+
+        await using var connection = await CreateConnectionAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("userId", userId);
+
+        await using var reader = await command.ExecuteReaderAsync();
+
+        var rooms = new List<Room>();
+
+        while (await reader.ReadAsync())
+        {
+            rooms.Add(ReadRoom(reader));
+        }
+
+        return rooms;
     }
 
+    public async Task<Room> GetSingleForUserAsync(string id, string userId)
+    {
+        const string sql = @"
+        SELECT id, user_id, name
+        FROM room
+        WHERE id = @id
+          AND user_id = @userId;
+    ";
+
+        await using var connection = await CreateConnectionAsync();
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("userId", userId);
+
+        await using var reader = await command.ExecuteReaderAsync();
+
+        if (await reader.ReadAsync())
+        {
+            return ReadRoom(reader);
+        }
+
+        throw new KeyNotFoundException($"Room with id '{id}' was not found for this user.");
+    }
+    
     private async Task<NpgsqlConnection> CreateConnectionAsync()
     {
         var connection = new NpgsqlConnection(_connectionString);
