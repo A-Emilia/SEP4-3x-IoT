@@ -69,6 +69,7 @@ string mongoConnectionString = Environment.GetEnvironmentVariable("MONGO_AZURE_C
     ?? builder.Configuration.GetConnectionString("Mongo")
     ?? throw new InvalidOperationException("Missing Mongo connection string.");
 
+
 builder.Services.AddSingleton<IMongoClient>(_ =>
     new MongoClient(mongoConnectionString));
 

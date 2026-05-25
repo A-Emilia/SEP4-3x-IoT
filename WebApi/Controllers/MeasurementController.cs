@@ -36,7 +36,7 @@ public class MeasurementController : ControllerBase
         if (apiKey != ExpectedApiKey)
             return Unauthorized("Invalid API key.");
 
-        measurement.Id = null!;
+        measurement.Id = null;
         measurement.RoomId = SharedMeasurementRoomId;
         measurement.TimestampUtc = DateTime.UtcNow;
 
