@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -22,7 +23,12 @@ public class RoomController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAllRooms()
     {
-        var rooms = await _roomRepo.GetManyAsync();
+        var userId = GetCurrentUserId();
+
+        if (userId == null)
+            return Unauthorized("User id was not found in token.");
+
+        var rooms = await _roomRepo.GetManyByUserIdAsync(userId);
 
         return Ok(rooms);
     }
@@ -31,9 +37,14 @@ public class RoomController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetRoomById(string id)
     {
+        var userId = GetCurrentUserId();
+
+        if (userId == null)
+            return Unauthorized("User id was not found in token.");
+
         try
         {
-            var room = await _roomRepo.GetSingle(id);
+            var room = await _roomRepo.GetSingleForUserAsync(id, userId);
             return Ok(room);
         }
         catch (KeyNotFoundException ex)
@@ -46,14 +57,18 @@ public class RoomController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateRoom([FromBody] Room room)
     {
-        if (string.IsNullOrWhiteSpace(room.UserId))
-            return BadRequest("User id is required.");
+        var userId = GetCurrentUserId();
+
+        if (userId == null)
+            return Unauthorized("User id was not found in token.");
 
         if (string.IsNullOrWhiteSpace(room.Name))
             return BadRequest("Room name is required.");
 
         if (room.Name.Length > 16)
             return BadRequest("Room name cannot be longer than 16 characters.");
+
+        room.UserId = userId;
 
         try
         {
@@ -69,10 +84,9 @@ public class RoomController : ControllerBase
         {
             return Conflict("A room with this id or name already exists.");
         }
-        //TODO chain deletion here?
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
         {
-            return BadRequest("The given user id does not exist.");
+            return BadRequest("The current user does not exist.");
         }
     }
 
@@ -80,8 +94,10 @@ public class RoomController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateRoom(string id, [FromBody] Room room)
     {
-        if (string.IsNullOrWhiteSpace(room.UserId))
-            return BadRequest("User id is required.");
+        var userId = GetCurrentUserId();
+
+        if (userId == null)
+            return Unauthorized("User id was not found in token.");
 
         if (string.IsNullOrWhiteSpace(room.Name))
             return BadRequest("Room name is required.");
@@ -90,6 +106,7 @@ public class RoomController : ControllerBase
             return BadRequest("Room name cannot be longer than 16 characters.");
 
         room.Id = id;
+        room.UserId = userId;
 
         try
         {
@@ -109,20 +126,20 @@ public class RoomController : ControllerBase
         {
             return Conflict("A room with this name already exists.");
         }
-        //TODO might need to implement stuff into postgre aswell
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
-        {
-            return BadRequest("The given user id does not exist.");
-        }
     }
 
     // DELETE /rooms/{id}
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteRoom(string id)
     {
+        var userId = GetCurrentUserId();
+
+        if (userId == null)
+            return Unauthorized("User id was not found in token.");
+
         try
         {
-            var deletedRoom = await _roomRepo.DeleteAsync(id);
+            var deletedRoom = await _roomRepo.DeleteAsync(id, userId);
 
             return Ok(new
             {
@@ -134,10 +151,16 @@ public class RoomController : ControllerBase
         {
             return NotFound(ex.Message);
         }
-        //TODO chain deletion?
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
         {
             return Conflict("This room cannot be deleted because it still has actuators assigned.");
         }
+    }
+
+    private string? GetCurrentUserId()
+    {
+        return User.FindFirst("userId")?.Value
+               ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+               ?? User.FindFirst("sub")?.Value;
     }
 }

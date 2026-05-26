@@ -1,20 +1,24 @@
 ﻿using System.Net;
+using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text.Json;
 using Entities;
-using RepositoryContracts;
 
 namespace WebApi.TCP;
 
 public class TCPService : BackgroundService
 {
-    private const string SharedRoomId = "shared";
+    private const string CloudEndpoint =
+        "https://sep4x-iot.azurewebsites.net/sensor-data/iot";
 
-    private readonly IServiceScopeFactory _scopeFactory;
+    private const string ApiKey =
+        "sep4-iot-secret";
 
-    public TCPService(IServiceScopeFactory scopeFactory)
+    private readonly IHttpClientFactory _httpClientFactory;
+
+    public TCPService(IHttpClientFactory httpClientFactory)
     {
-        _scopeFactory = scopeFactory;
+        _httpClientFactory = httpClientFactory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -68,23 +72,9 @@ public class TCPService : BackgroundService
                 if (measurement == null)
                     continue;
 
-                measurement.Id = null!;
-                measurement.RoomId = SharedRoomId;
-                measurement.TimestampUtc = DateTime.UtcNow;
+                await SendMeasurementToCloud(measurement, stoppingToken);
 
-                using var scope = _scopeFactory.CreateScope();
-
-                var deviceRepository = scope.ServiceProvider
-                    .GetRequiredService<IDeviceRepository>();
-
-                await ApplyDeviceEffects(measurement, deviceRepository);
-
-                var measurementRepository = scope.ServiceProvider
-                    .GetRequiredService<IMeasurementRepository>();
-
-                await measurementRepository.CreateAsync(measurement);
-
-                Console.WriteLine(DateTime.UtcNow + " Measurement saved to MongoDB.");
+                Console.WriteLine(DateTime.UtcNow + " Measurement sent to cloud.");
             }
             catch (JsonException)
             {
@@ -92,41 +82,34 @@ public class TCPService : BackgroundService
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Failed to save measurement: " + ex.Message);
+                Console.WriteLine("Failed to send measurement to cloud: " + ex.Message);
             }
         }
     }
 
-    private static async Task ApplyDeviceEffects(
+    private async Task SendMeasurementToCloud(
         Measurement measurement,
-        IDeviceRepository deviceRepository)
+        CancellationToken cancellationToken)
     {
-        var heaterState = await deviceRepository.GetDeviceState(SharedRoomId, DeviceType.Heater);
-        var windowState = await deviceRepository.GetDeviceState(SharedRoomId, DeviceType.Window);
-        var curtainState = await deviceRepository.GetDeviceState(SharedRoomId, DeviceType.Curtain);
-        var humidifierState = await deviceRepository.GetDeviceState(SharedRoomId, DeviceType.Humidifier);
-        
-        if (heaterState == DeviceState.On)
-        {
-            measurement.Temperature *= 1.1m;
-        }
+        var client = _httpClientFactory.CreateClient();
 
-        if (windowState == DeviceState.Open)
+        var payload = new
         {
-            measurement.Temperature *= 0.9m;
-        }
+            temperature = measurement.Temperature,
+            humidity = measurement.Humidity,
+            light = measurement.Light
+        };
 
-        if (curtainState == DeviceState.Closed)
-        {
-            measurement.Light *= 0.3;
-        }
-        
-        if (curtainState == DeviceState.Closed)
-        {
-             measurement.Humidity *= 1.4m;
-        }
+        using var request = new HttpRequestMessage(HttpMethod.Post, CloudEndpoint);
+        request.Headers.Add("X-Api-Key", ApiKey);
+        request.Content = JsonContent.Create(payload);
 
-        measurement.Temperature = Math.Round(measurement.Temperature, 2);
-        measurement.Light = Math.Round(measurement.Light, 2);
+        var response = await client.SendAsync(request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new Exception($"Cloud API returned {(int)response.StatusCode}: {responseText}");
+        }
     }
 }
