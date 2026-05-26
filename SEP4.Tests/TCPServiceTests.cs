@@ -1,11 +1,10 @@
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
-using Entities;
-using Microsoft.Extensions.DependencyInjection;
 using Moq;
-using RepositoryContracts;
+using Moq.Protected;
 using WebApi.TCP;
 
 namespace SEP4.Tests;
@@ -13,23 +12,20 @@ namespace SEP4.Tests;
 public class TCPServiceTests
 {
     [Fact]
-    public async Task HandleClientAsync_WithInvalidJson_ShouldNotSaveMeasurement()
+    public async Task HandleClientAsync_WithInvalidJson_ShouldNotSendRequest()
     {
         // Arrange
-        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
+        var handlerMock = new Mock<HttpMessageHandler>();
 
-        var mockDeviceRepo = new Mock<IDeviceRepository>();
+        var httpClient = new HttpClient(handlerMock.Object);
 
-        var services = new ServiceCollection();
+        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
 
-        services.AddSingleton(mockMeasurementRepo.Object);
-        services.AddSingleton(mockDeviceRepo.Object);
+        httpClientFactoryMock
+            .Setup(f => f.CreateClient(It.IsAny<string>()))
+            .Returns(httpClient);
 
-        var provider = services.BuildServiceProvider();
-
-        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
-
-        var tcpService = new TCPService(scopeFactory);
+        var tcpService = new TCPService(httpClientFactoryMock.Object);
 
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -37,89 +33,15 @@ public class TCPServiceTests
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
         var client = new TcpClient();
+
         await client.ConnectAsync("127.0.0.1", port);
 
         var serverClient = await listener.AcceptTcpClientAsync();
-
-        var stream = client.GetStream();
 
         var invalidJson = "{ invalid json }\n";
 
         var bytes = Encoding.UTF8.GetBytes(invalidJson);
 
-        await stream.WriteAsync(bytes);
-
-        var method = typeof(TCPService)
-            .GetMethod(
-                "HandleClientAsync",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-
-        Assert.NotNull(method);
-
-        _ = (Task)method.Invoke(
-            tcpService,
-            new object[]
-            {
-                serverClient,
-                CancellationToken.None
-            })!;
-
-        await Task.Delay(200);
-
-        // Assert
-        mockMeasurementRepo.Verify(r =>
-            r.CreateAsync(It.IsAny<Measurement>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task HandleClientAsync_ShouldAssignSharedRoomId()
-    {
-        // Arrange
-        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
-
-        Measurement? savedMeasurement = null;
-
-        mockMeasurementRepo.Setup(r =>
-                r.CreateAsync(It.IsAny<Measurement>()))
-            .Callback<Measurement>(m => savedMeasurement = m)
-            .ReturnsAsync((Measurement m) => m);
-
-        var mockDeviceRepo = new Mock<IDeviceRepository>();
-
-        mockDeviceRepo.Setup(r =>
-                r.GetDeviceState(
-                    It.IsAny<string>(),
-                    It.IsAny<DeviceType>()))
-            .ReturnsAsync(DeviceState.Off);
-
-        var services = new ServiceCollection();
-
-        services.AddSingleton(mockMeasurementRepo.Object);
-        services.AddSingleton(mockDeviceRepo.Object);
-
-        var provider = services.BuildServiceProvider();
-
-        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
-
-        var tcpService = new TCPService(scopeFactory);
-
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-
-        var client = new TcpClient();
-        await client.ConnectAsync("127.0.0.1", port);
-
-        var serverClient = await listener.AcceptTcpClientAsync();
-
-        var json = """
-        {"temperature":20,"humidity":50,"light":100}
-        """ + "\n";
-
-        var bytes = Encoding.UTF8.GetBytes(json);
-
         await client.GetStream().WriteAsync(bytes);
 
         var method = typeof(TCPService)
@@ -128,286 +50,50 @@ public class TCPServiceTests
                 BindingFlags.NonPublic | BindingFlags.Instance);
 
         Assert.NotNull(method);
-
-        _ = (Task)method.Invoke(
-            tcpService,
-            new object[]
-            {
-                serverClient,
-                CancellationToken.None
-            })!;
-
-        await Task.Delay(200);
-
-        // Assert
-        Assert.NotNull(savedMeasurement);
-        Assert.Equal("shared", savedMeasurement!.RoomId);
-    }
-
-    [Fact]
-    public async Task HandleClientAsync_WithHeaterOn_ShouldIncreaseTemperature()
-    {
-        // Arrange
-        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
-
-        Measurement? savedMeasurement = null;
-
-        mockMeasurementRepo.Setup(r =>
-                r.CreateAsync(It.IsAny<Measurement>()))
-            .Callback<Measurement>(m => savedMeasurement = m)
-            .ReturnsAsync((Measurement m) => m);
-
-        var mockDeviceRepo = new Mock<IDeviceRepository>();
-
-        mockDeviceRepo.Setup(r =>
-                r.GetDeviceState(
-                    It.IsAny<string>(),
-                    DeviceType.Heater))
-            .ReturnsAsync(DeviceState.On);
-
-        mockDeviceRepo.Setup(r =>
-                r.GetDeviceState(
-                    It.IsAny<string>(),
-                    It.Is<DeviceType>(d => d != DeviceType.Heater)))
-            .ReturnsAsync(DeviceState.Off);
-
-        var services = new ServiceCollection();
-
-        services.AddSingleton(mockMeasurementRepo.Object);
-        services.AddSingleton(mockDeviceRepo.Object);
-
-        var provider = services.BuildServiceProvider();
-
-        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
-
-        var tcpService = new TCPService(scopeFactory);
-
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-
-        var client = new TcpClient();
-        await client.ConnectAsync("127.0.0.1", port);
-
-        var serverClient = await listener.AcceptTcpClientAsync();
-
-        var json = """
-        {"temperature":20,"humidity":50,"light":100}
-        """ + "\n";
-
-        var bytes = Encoding.UTF8.GetBytes(json);
-
-        await client.GetStream().WriteAsync(bytes);
-
-        var method = typeof(TCPService)
-            .GetMethod(
-                "HandleClientAsync",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-
-        Assert.NotNull(method);
-
-        _ = (Task)method.Invoke(
-            tcpService,
-            new object[]
-            {
-                serverClient,
-                CancellationToken.None
-            })!;
-
-        await Task.Delay(200);
-
-        // Assert
-        Assert.NotNull(savedMeasurement);
-        Assert.Equal(22, savedMeasurement!.Temperature);
-    }
-
-    [Fact]
-    public async Task HandleClientAsync_ShouldAssignTimestamp()
-    {
-        // Arrange
-        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
-
-        Measurement? savedMeasurement = null;
-
-        mockMeasurementRepo.Setup(r =>
-                r.CreateAsync(It.IsAny<Measurement>()))
-            .Callback<Measurement>(m => savedMeasurement = m)
-            .ReturnsAsync((Measurement m) => m);
-
-        var mockDeviceRepo = new Mock<IDeviceRepository>();
-
-        mockDeviceRepo.Setup(r =>
-                r.GetDeviceState(
-                    It.IsAny<string>(),
-                    It.IsAny<DeviceType>()))
-            .ReturnsAsync(DeviceState.Off);
-
-        var services = new ServiceCollection();
-
-        services.AddSingleton(mockMeasurementRepo.Object);
-        services.AddSingleton(mockDeviceRepo.Object);
-
-        var provider = services.BuildServiceProvider();
-
-        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
-
-        var tcpService = new TCPService(scopeFactory);
-
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-
-        var client = new TcpClient();
-        await client.ConnectAsync("127.0.0.1", port);
-
-        var serverClient = await listener.AcceptTcpClientAsync();
-
-        var json = """
-        {"temperature":20,"humidity":50,"light":100}
-        """ + "\n";
-
-        var bytes = Encoding.UTF8.GetBytes(json);
-
-        await client.GetStream().WriteAsync(bytes);
-
-        var method = typeof(TCPService)
-            .GetMethod(
-                "HandleClientAsync",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-
-        Assert.NotNull(method);
-
-        _ = (Task)method.Invoke(
-            tcpService,
-            new object[]
-            {
-                serverClient,
-                CancellationToken.None
-            })!;
-
-        await Task.Delay(200);
-
-        // Assert
-        Assert.NotNull(savedMeasurement);
-        Assert.True(savedMeasurement!.TimestampUtc > DateTime.UtcNow.AddMinutes(-1));
-    }
-
-    [Fact]
-    public async Task HandleClientAsync_WithWindowOpen_ShouldDecreaseTemperature()
-    {
-        // Arrange
-        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
-
-        Measurement? savedMeasurement = null;
-
-        mockMeasurementRepo.Setup(r =>
-                r.CreateAsync(It.IsAny<Measurement>()))
-            .Callback<Measurement>(m => savedMeasurement = m)
-            .ReturnsAsync((Measurement m) => m);
-
-        var mockDeviceRepo = new Mock<IDeviceRepository>();
-
-        mockDeviceRepo.Setup(r =>
-                r.GetDeviceState(
-                    It.IsAny<string>(),
-                    DeviceType.Window))
-            .ReturnsAsync(DeviceState.Open);
-
-        mockDeviceRepo.Setup(r =>
-                r.GetDeviceState(
-                    It.IsAny<string>(),
-                    It.Is<DeviceType>(d => d != DeviceType.Window)))
-            .ReturnsAsync(DeviceState.Off);
-
-        var services = new ServiceCollection();
-
-        services.AddSingleton(mockMeasurementRepo.Object);
-        services.AddSingleton(mockDeviceRepo.Object);
-
-        var provider = services.BuildServiceProvider();
-
-        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
-
-        var tcpService = new TCPService(scopeFactory);
-
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-
-        var client = new TcpClient();
-
-        await client.ConnectAsync("127.0.0.1", port);
-
-        var serverClient = await listener.AcceptTcpClientAsync();
-
-        var json = """
-    {"temperature":20,"humidity":50,"light":100}
-    """ + "\n";
-
-        var bytes = Encoding.UTF8.GetBytes(json);
-
-        await client.GetStream().WriteAsync(bytes);
-
-        var method = typeof(TCPService)
-            .GetMethod(
-                "HandleClientAsync",
-                BindingFlags.NonPublic | BindingFlags.Instance);
 
         _ = (Task)method!.Invoke(
             tcpService,
             new object[]
             {
-            serverClient,
-            CancellationToken.None
+                serverClient,
+                CancellationToken.None
             })!;
 
         await Task.Delay(200);
 
         // Assert
-        Assert.NotNull(savedMeasurement);
-        Assert.Equal(18, savedMeasurement!.Temperature);
+        handlerMock.Protected().Verify(
+            "SendAsync",
+            Times.Never(),
+            ItExpr.IsAny<HttpRequestMessage>(),
+            ItExpr.IsAny<CancellationToken>());
     }
 
     [Fact]
-    public async Task HandleClientAsync_WithCurtainClosed_ShouldReduceLight()
+    public async Task HandleClientAsync_WithValidJson_ShouldSendPostRequest()
     {
         // Arrange
-        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
+        var handlerMock = new Mock<HttpMessageHandler>();
 
-        Measurement? savedMeasurement = null;
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK
+            });
 
-        mockMeasurementRepo.Setup(r =>
-                r.CreateAsync(It.IsAny<Measurement>()))
-            .Callback<Measurement>(m => savedMeasurement = m)
-            .ReturnsAsync((Measurement m) => m);
+        var httpClient = new HttpClient(handlerMock.Object);
 
-        var mockDeviceRepo = new Mock<IDeviceRepository>();
+        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
 
-        mockDeviceRepo.Setup(r =>
-                r.GetDeviceState(
-                    It.IsAny<string>(),
-                    DeviceType.Curtain))
-            .ReturnsAsync(DeviceState.Closed);
+        httpClientFactoryMock
+            .Setup(f => f.CreateClient(It.IsAny<string>()))
+            .Returns(httpClient);
 
-        mockDeviceRepo.Setup(r =>
-                r.GetDeviceState(
-                    It.IsAny<string>(),
-                    It.Is<DeviceType>(d => d != DeviceType.Curtain)))
-            .ReturnsAsync(DeviceState.Off);
-
-        var services = new ServiceCollection();
-
-        services.AddSingleton(mockMeasurementRepo.Object);
-        services.AddSingleton(mockDeviceRepo.Object);
-
-        var provider = services.BuildServiceProvider();
-
-        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
-
-        var tcpService = new TCPService(scopeFactory);
+        var tcpService = new TCPService(httpClientFactoryMock.Object);
 
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -421,8 +107,8 @@ public class TCPServiceTests
         var serverClient = await listener.AcceptTcpClientAsync();
 
         var json = """
-    {"temperature":20,"humidity":50,"light":100}
-    """ + "\n";
+        {"temperature":20,"humidity":50,"light":100}
+        """ + "\n";
 
         var bytes = Encoding.UTF8.GetBytes(json);
 
@@ -433,49 +119,52 @@ public class TCPServiceTests
                 "HandleClientAsync",
                 BindingFlags.NonPublic | BindingFlags.Instance);
 
+        Assert.NotNull(method);
+
         _ = (Task)method!.Invoke(
             tcpService,
             new object[]
             {
-            serverClient,
-            CancellationToken.None
+                serverClient,
+                CancellationToken.None
             })!;
 
         await Task.Delay(200);
 
         // Assert
-        Assert.NotNull(savedMeasurement);
-        Assert.Equal(30, savedMeasurement!.Light);
+        handlerMock.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(req =>
+                req.Method == HttpMethod.Post),
+            ItExpr.IsAny<CancellationToken>());
     }
 
     [Fact]
-    public async Task HandleClientAsync_WhenSaveFails_ShouldNotCrash()
+    public async Task HandleClientAsync_WhenCloudFails_ShouldNotCrash()
     {
         // Arrange
-        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
+        var handlerMock = new Mock<HttpMessageHandler>();
 
-        mockMeasurementRepo.Setup(r =>
-                r.CreateAsync(It.IsAny<Measurement>()))
-            .ThrowsAsync(new Exception("DB fail"));
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.InternalServerError
+            });
 
-        var mockDeviceRepo = new Mock<IDeviceRepository>();
+        var httpClient = new HttpClient(handlerMock.Object);
 
-        mockDeviceRepo.Setup(r =>
-                r.GetDeviceState(
-                    It.IsAny<string>(),
-                    It.IsAny<DeviceType>()))
-            .ReturnsAsync(DeviceState.Off);
+        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
 
-        var services = new ServiceCollection();
+        httpClientFactoryMock
+            .Setup(f => f.CreateClient(It.IsAny<string>()))
+            .Returns(httpClient);
 
-        services.AddSingleton(mockMeasurementRepo.Object);
-        services.AddSingleton(mockDeviceRepo.Object);
-
-        var provider = services.BuildServiceProvider();
-
-        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
-
-        var tcpService = new TCPService(scopeFactory);
+        var tcpService = new TCPService(httpClientFactoryMock.Object);
 
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -489,8 +178,8 @@ public class TCPServiceTests
         var serverClient = await listener.AcceptTcpClientAsync();
 
         var json = """
-    {"temperature":20,"humidity":50,"light":100}
-    """ + "\n";
+        {"temperature":20,"humidity":50,"light":100}
+        """ + "\n";
 
         var bytes = Encoding.UTF8.GetBytes(json);
 
@@ -507,8 +196,8 @@ public class TCPServiceTests
                 tcpService,
                 new object[]
                 {
-                serverClient,
-                CancellationToken.None
+                    serverClient,
+                    CancellationToken.None
                 })!;
 
             await Task.Delay(200);

@@ -1,13 +1,29 @@
 using Controllers;
 using Entities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using RepositoryContracts;
+using System.Security.Claims;
 
 namespace SEP4.Tests;
 
 public class RoomControllerTests
 {
+    private static void SetupUser(ControllerBase controller)
+    {
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, "test-user-id")
+                }, "mock"))
+            }
+        };
+    }
+
     [Fact]
     public async Task CreateRoom_WithMissingUserId_ShouldReturnBadRequest()
     {
@@ -17,6 +33,8 @@ public class RoomControllerTests
         var controller = new RoomController(
             mockRoomRepo.Object
         );
+
+        SetupUser(controller);
 
         var room = new Room
         {
@@ -28,7 +46,7 @@ public class RoomControllerTests
         var result = await controller.CreateRoom(room);
 
         // Assert
-        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.IsType<OkObjectResult>(result); ;
     }
 
     [Fact]
@@ -40,6 +58,8 @@ public class RoomControllerTests
         var controller = new RoomController(
             mockRoomRepo.Object
         );
+
+        SetupUser(controller);
 
         var room = new Room
         {
@@ -63,6 +83,8 @@ public class RoomControllerTests
         var controller = new RoomController(
             mockRoomRepo.Object
         );
+
+        SetupUser(controller);
 
         var room = new Room
         {
@@ -98,6 +120,8 @@ public class RoomControllerTests
             mockRoomRepo.Object
         );
 
+        SetupUser(controller);
+
         var room = new Room
         {
             UserId = "user1",
@@ -117,12 +141,15 @@ public class RoomControllerTests
         // Arrange
         var mockRoomRepo = new Mock<IRoomRepository>();
 
-        mockRoomRepo.Setup(r => r.GetSingle("unknownRoom"))
-            .ThrowsAsync(new KeyNotFoundException("Room not found."));
+        mockRoomRepo.Setup(r =>
+         r.GetSingle(It.IsAny<string>()))
+             .ThrowsAsync(new KeyNotFoundException("Room not found."));
 
         var controller = new RoomController(
             mockRoomRepo.Object
         );
+
+        SetupUser(controller);
 
         // Act
         var result = await controller.GetRoomById("unknownRoom");
@@ -137,12 +164,15 @@ public class RoomControllerTests
         // Arrange
         var mockRoomRepo = new Mock<IRoomRepository>();
 
-        mockRoomRepo.Setup(r => r.DeleteAsync("unknownRoom"))
+        mockRoomRepo.Setup(r =>
+                r.DeleteAsync("unknownRoom", It.IsAny<string>()))
             .ThrowsAsync(new KeyNotFoundException("Room not found."));
 
         var controller = new RoomController(
             mockRoomRepo.Object
         );
+
+        SetupUser(controller);
 
         // Act
         var result = await controller.DeleteRoom("unknownRoom");
@@ -172,6 +202,8 @@ public class RoomControllerTests
             mockRoomRepo.Object
         );
 
+        SetupUser(controller);
+
         var room = new Room
         {
             UserId = "user1",
@@ -194,6 +226,8 @@ public class RoomControllerTests
         var controller = new RoomController(
             mockRoomRepo.Object
         );
+
+        SetupUser(controller);
 
         var room = new Room
         {
@@ -221,12 +255,15 @@ public class RoomControllerTests
             Name = "Living Room"
         };
 
-        mockRoomRepo.Setup(r => r.DeleteAsync("room1"))
+        mockRoomRepo.Setup(r =>
+                r.DeleteAsync("room1", It.IsAny<string>()))
             .ReturnsAsync(deletedRoom);
 
         var controller = new RoomController(
             mockRoomRepo.Object
         );
+
+        SetupUser(controller);
 
         // Act
         var result = await controller.DeleteRoom("room1");

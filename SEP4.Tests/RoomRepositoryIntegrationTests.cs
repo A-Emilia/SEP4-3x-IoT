@@ -70,7 +70,7 @@ public class RoomRepositoryIntegrationTests
         });
 
         // Act
-        await roomRepo.DeleteAsync(room.Id);
+        await roomRepo.DeleteAsync(room.Id, user.Id);
 
         // Assert
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
