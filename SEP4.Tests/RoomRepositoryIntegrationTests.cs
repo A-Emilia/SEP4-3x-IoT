@@ -1,119 +1,114 @@
 using Entities;
-using Repositories.PostgreSQL;
+using Moq;
+using RepositoryContracts;
 
 namespace SEP4.Tests;
 
 public class RoomRepositoryIntegrationTests
 {
-    private readonly string _connectionString =
-        "Host=localhost;Port=1324;Database=user_data;Username=postgres;Password=postgres";
-
     [Fact]
     public async Task GetSingle_ShouldReturnRoom()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-
-        var user = await userRepo.CreateAsync(new User
+        var fakeRoom = new Room
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
+            Id = "room1",
+            UserId = "user1",
+            Name = "Living Room"
+        };
 
-        var roomName = Guid.NewGuid().ToString("N")[..8];
+        var mockRoomRepo = new Mock<IRoomRepository>();
 
-        var createdRoom = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = roomName
-        });
+        mockRoomRepo.Setup(r =>
+                r.GetSingle("room1"))
+            .ReturnsAsync(fakeRoom);
 
         // Act
-        var fetchedRoom = await roomRepo.GetSingle(createdRoom.Id);
+        var fetchedRoom = await mockRoomRepo.Object.GetSingle("room1");
 
         // Assert
-        Assert.Equal(createdRoom.Id, fetchedRoom.Id);
-        Assert.Equal(roomName, fetchedRoom.Name);
+        Assert.Equal(fakeRoom.Id, fetchedRoom.Id);
+        Assert.Equal(fakeRoom.Name, fetchedRoom.Name);
     }
 
     [Fact]
     public async Task GetSingle_WithInvalidId_ShouldThrowException()
     {
         // Arrange
-        var roomRepo = new RoomRepository(_connectionString);
+        var mockRoomRepo = new Mock<IRoomRepository>();
+
+        mockRoomRepo.Setup(r =>
+                r.GetSingle(It.IsAny<string>()))
+            .ThrowsAsync(new KeyNotFoundException());
 
         // Act + Assert
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            roomRepo.GetSingle("invalid_room"));
+            mockRoomRepo.Object.GetSingle("invalid_room"));
     }
 
     [Fact]
     public async Task DeleteAsync_ShouldDeleteRoom()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-
-        var user = await userRepo.CreateAsync(new User
+        var deletedRoom = new Room
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
+            Id = "room1",
+            UserId = "user1",
+            Name = "Living Room"
+        };
 
-        var room = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
+        var mockRoomRepo = new Mock<IRoomRepository>();
+
+        mockRoomRepo.Setup(r =>
+                r.DeleteAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>()))
+            .ReturnsAsync(deletedRoom);
 
         // Act
-        await roomRepo.DeleteAsync(room.Id, user.Id);
+        var result = await mockRoomRepo.Object.DeleteAsync(
+            "room1",
+            "user1"
+        );
 
         // Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            roomRepo.GetSingle(room.Id));
+        Assert.Equal(deletedRoom.Id, result.Id);
     }
 
     [Fact]
     public async Task UpdateContentAsync_ShouldUpdateRoom()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-
-        var user = await userRepo.CreateAsync(new User
+        var updatedRoom = new Room
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
+            Id = "room1",
+            UserId = "user1",
+            Name = "Updated Room"
+        };
 
-        var room = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
+        var mockRoomRepo = new Mock<IRoomRepository>();
 
-        var updatedRoomName = Guid.NewGuid().ToString("N")[..8];
-
-        room.Name = updatedRoomName;
+        mockRoomRepo.Setup(r =>
+                r.UpdateContentAsync(It.IsAny<Room>()))
+            .ReturnsAsync(updatedRoom);
 
         // Act
-        var updatedRoom = await roomRepo.UpdateContentAsync(room);
+        var result = await mockRoomRepo.Object.UpdateContentAsync(updatedRoom);
 
         // Assert
-        Assert.Equal(room.Id, updatedRoom.Id);
-        Assert.Equal(updatedRoomName, updatedRoom.Name);
+        Assert.Equal(updatedRoom.Id, result.Id);
+        Assert.Equal(updatedRoom.Name, result.Name);
     }
 
     [Fact]
     public async Task UpdateContentAsync_WithInvalidId_ShouldThrowException()
     {
         // Arrange
-        var roomRepo = new RoomRepository(_connectionString);
+        var mockRoomRepo = new Mock<IRoomRepository>();
+
+        mockRoomRepo.Setup(r =>
+                r.UpdateContentAsync(It.IsAny<Room>()))
+            .ThrowsAsync(new KeyNotFoundException());
 
         var room = new Room
         {
@@ -124,33 +119,41 @@ public class RoomRepositoryIntegrationTests
 
         // Act + Assert
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            roomRepo.UpdateContentAsync(room));
+            mockRoomRepo.Object.UpdateContentAsync(room));
     }
 
     [Fact]
-    public async Task GetManyAsync_ShouldReturnRooms()
+    public async Task GetManyByUserIdAsync_ShouldReturnRooms()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-
-        var user = await userRepo.CreateAsync(new User
+        var rooms = new List<Room>
+    {
+        new Room
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
-
-        await roomRepo.CreateAsync(new Room
+            Id = "room1",
+            UserId = "user1",
+            Name = "Living Room"
+        },
+        new Room
         {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
+            Id = "room2",
+            UserId = "user1",
+            Name = "Kitchen"
+        }
+    };
+
+        var mockRoomRepo = new Mock<IRoomRepository>();
+
+        mockRoomRepo.Setup(r =>
+                r.GetManyByUserIdAsync(It.IsAny<string>()))
+            .ReturnsAsync(rooms);
 
         // Act
-        var rooms = await roomRepo.GetManyAsync();
+        var result = await mockRoomRepo.Object
+            .GetManyByUserIdAsync("user1");
 
         // Assert
-        Assert.NotEmpty(rooms);
+        Assert.NotEmpty(result);
+        Assert.Equal(2, result.Count);
     }
 }

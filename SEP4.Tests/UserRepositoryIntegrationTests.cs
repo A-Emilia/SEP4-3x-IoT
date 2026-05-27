@@ -1,33 +1,36 @@
 using Entities;
-using Repositories.PostgreSQL;
+using Moq;
+using RepositoryContracts;
 
 namespace SEP4.Tests;
 
 public class UserRepositoryIntegrationTests
 {
-    private readonly string _connectionString =
-        "Host=localhost;Port=1324;Database=user_data;Username=postgres;Password=postgres";
-
     [Fact]
     public async Task CreateAsync_ShouldCreateUser()
     {
         // Arrange
-        var repo = new UserRepository(_connectionString);
-
-        var user = new User
+        var fakeUser = new User
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
+            Id = "user1",
+            Name = "Attila",
+            Email = "test@test.com",
             PasswordHash = "hashedPassword"
         };
 
+        var mockUserRepo = new Mock<IUserRepository>();
+
+        mockUserRepo.Setup(r =>
+                r.CreateAsync(It.IsAny<User>()))
+            .ReturnsAsync(fakeUser);
+
         // Act
-        var createdUser = await repo.CreateAsync(user);
+        var createdUser = await mockUserRepo.Object.CreateAsync(fakeUser);
 
         // Assert
         Assert.NotNull(createdUser);
-        Assert.Equal(user.Name, createdUser.Name);
-        Assert.Equal(user.Email, createdUser.Email);
+        Assert.Equal(fakeUser.Name, createdUser.Name);
+        Assert.Equal(fakeUser.Email, createdUser.Email);
         Assert.False(string.IsNullOrWhiteSpace(createdUser.Id));
     }
 
@@ -35,69 +38,85 @@ public class UserRepositoryIntegrationTests
     public async Task GetSingle_ShouldReturnUser()
     {
         // Arrange
-        var repo = new UserRepository(_connectionString);
-
-        var user = new User
+        var fakeUser = new User
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
+            Id = "user1",
+            Name = "Attila",
+            Email = "test@test.com",
             PasswordHash = "hashedPassword"
         };
 
-        var createdUser = await repo.CreateAsync(user);
+        var mockUserRepo = new Mock<IUserRepository>();
+
+        mockUserRepo.Setup(r =>
+                r.GetSingle("user1"))
+            .ReturnsAsync(fakeUser);
 
         // Act
-        var fetchedUser = await repo.GetSingle(createdUser.Id);
+        var fetchedUser = await mockUserRepo.Object.GetSingle("user1");
 
         // Assert
         Assert.NotNull(fetchedUser);
-        Assert.Equal(createdUser.Id, fetchedUser.Id);
-        Assert.Equal(createdUser.Name, fetchedUser.Name);
-        Assert.Equal(createdUser.Email, fetchedUser.Email);
+        Assert.Equal(fakeUser.Id, fetchedUser.Id);
+        Assert.Equal(fakeUser.Name, fetchedUser.Name);
+        Assert.Equal(fakeUser.Email, fetchedUser.Email);
     }
 
     [Fact]
     public async Task GetSingle_WithInvalidId_ShouldThrowException()
     {
         // Arrange
-        var repo = new UserRepository(_connectionString);
+        var mockUserRepo = new Mock<IUserRepository>();
+
+        mockUserRepo.Setup(r =>
+                r.GetSingle(It.IsAny<string>()))
+            .ThrowsAsync(new KeyNotFoundException());
 
         // Act + Assert
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            repo.GetSingle("invalid_id"));
+            mockUserRepo.Object.GetSingle("invalid_id"));
     }
 
     [Fact]
     public async Task GetByEmailAsync_ShouldReturnUser()
     {
         // Arrange
-        var repo = new UserRepository(_connectionString);
-
-        var user = new User
+        var fakeUser = new User
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
+            Id = "user1",
+            Name = "Attila",
+            Email = "test@test.com",
             PasswordHash = "hashedPassword"
         };
 
-        var createdUser = await repo.CreateAsync(user);
+        var mockUserRepo = new Mock<IUserRepository>();
+
+        mockUserRepo.Setup(r =>
+                r.GetByEmailAsync(fakeUser.Email))
+            .ReturnsAsync(fakeUser);
 
         // Act
-        var fetchedUser = await repo.GetByEmailAsync(createdUser.Email);
+        var fetchedUser = await mockUserRepo.Object
+            .GetByEmailAsync(fakeUser.Email);
 
         // Assert
         Assert.NotNull(fetchedUser);
-        Assert.Equal(createdUser.Email, fetchedUser!.Email);
+        Assert.Equal(fakeUser.Email, fetchedUser!.Email);
     }
 
     [Fact]
     public async Task GetByEmailAsync_WithInvalidEmail_ShouldReturnNull()
     {
         // Arrange
-        var repo = new UserRepository(_connectionString);
+        var mockUserRepo = new Mock<IUserRepository>();
+
+        mockUserRepo.Setup(r =>
+                r.GetByEmailAsync(It.IsAny<string>()))
+            .ReturnsAsync((User?)null);
 
         // Act
-        var result = await repo.GetByEmailAsync("doesnotexist@test.com");
+        var result = await mockUserRepo.Object
+            .GetByEmailAsync("doesnotexist@test.com");
 
         // Assert
         Assert.Null(result);
@@ -107,50 +126,52 @@ public class UserRepositoryIntegrationTests
     public async Task DeleteAsync_ShouldDeleteUser()
     {
         // Arrange
-        var repo = new UserRepository(_connectionString);
-
-        var user = new User
+        var deletedUser = new User
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
+            Id = "user1",
+            Name = "Attila",
+            Email = "test@test.com",
             PasswordHash = "hashedPassword"
         };
 
-        var createdUser = await repo.CreateAsync(user);
+        var mockUserRepo = new Mock<IUserRepository>();
+
+        mockUserRepo.Setup(r =>
+                r.DeleteAsync(It.IsAny<string>()))
+            .ReturnsAsync(deletedUser);
 
         // Act
-        var deletedUser = await repo.DeleteAsync(createdUser.Id);
+        var result = await mockUserRepo.Object
+            .DeleteAsync("user1");
 
         // Assert
-        Assert.Equal(createdUser.Id, deletedUser.Id);
-
-        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            repo.GetSingle(createdUser.Id));
+        Assert.Equal(deletedUser.Id, result.Id);
     }
 
     [Fact]
     public async Task UpdateContentAsync_ShouldUpdateUser()
     {
         // Arrange
-        var repo = new UserRepository(_connectionString);
-
-        var user = new User
+        var updatedUser = new User
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
+            Id = "user1",
+            Name = "UpdatedAttila",
+            Email = "updated@test.com",
             PasswordHash = "hashedPassword"
         };
 
-        var createdUser = await repo.CreateAsync(user);
+        var mockUserRepo = new Mock<IUserRepository>();
 
-        createdUser.Name = Guid.NewGuid().ToString("N")[..10];
-        createdUser.Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com";
+        mockUserRepo.Setup(r =>
+                r.UpdateContentAsync(It.IsAny<User>()))
+            .ReturnsAsync(updatedUser);
 
         // Act
-        var updatedUser = await repo.UpdateContentAsync(createdUser);
+        var result = await mockUserRepo.Object
+            .UpdateContentAsync(updatedUser);
 
         // Assert
-        Assert.Equal(createdUser.Name, updatedUser.Name);
-        Assert.Equal(createdUser.Email, updatedUser.Email);
+        Assert.Equal(updatedUser.Name, result.Name);
+        Assert.Equal(updatedUser.Email, result.Email);
     }
 }

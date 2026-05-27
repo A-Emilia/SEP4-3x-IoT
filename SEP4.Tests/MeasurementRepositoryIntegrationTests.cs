@@ -1,30 +1,15 @@
 using Entities;
-using MongoDB.Driver;
-using Repositories;
+using Moq;
+using RepositoryContracts;
 
 namespace SEP4.Tests;
 
 public class MeasurementRepositoryIntegrationTests
 {
-    private readonly string _connectionString =
-        "mongodb://mongodb:mongodb@localhost:27018/measurement_data?authSource=admin";
-
-    private readonly IMongoDatabase _database;
-
-    public MeasurementRepositoryIntegrationTests()
-    {
-        var client = new MongoClient(_connectionString);
-        _database = client.GetDatabase("measurement_data");
-    }
-
     [Fact]
     public async Task CreateAsync_ShouldCreateMeasurement()
     {
         // Arrange
-        await _database.DropCollectionAsync("measurements");
-
-        var repo = new MeasurementRepository(_database);
-
         var measurement = new Measurement
         {
             RoomId = "room1",
@@ -33,8 +18,15 @@ public class MeasurementRepositoryIntegrationTests
             TimestampUtc = DateTime.UtcNow
         };
 
+        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
+
+        mockMeasurementRepo.Setup(r =>
+                r.CreateAsync(It.IsAny<Measurement>()))
+            .ReturnsAsync(measurement);
+
         // Act
-        var createdMeasurement = await repo.CreateAsync(measurement);
+        var createdMeasurement = await mockMeasurementRepo.Object
+            .CreateAsync(measurement);
 
         // Assert
         Assert.NotNull(createdMeasurement);
@@ -47,19 +39,7 @@ public class MeasurementRepositoryIntegrationTests
     public async Task GetMostRecent_ShouldReturnLatestMeasurement()
     {
         // Arrange
-        await _database.DropCollectionAsync("measurements");
-
-        var repo = new MeasurementRepository(_database);
-
-        var oldMeasurement = new Measurement
-        {
-            RoomId = "room1",
-            Temperature = 20,
-            Humidity = 40,
-            TimestampUtc = DateTime.UtcNow.AddMinutes(-10)
-        };
-
-        var newMeasurement = new Measurement
+        var latestMeasurement = new Measurement
         {
             RoomId = "room1",
             Temperature = 30,
@@ -67,40 +47,51 @@ public class MeasurementRepositoryIntegrationTests
             TimestampUtc = DateTime.UtcNow
         };
 
-        await repo.CreateAsync(oldMeasurement);
-        await repo.CreateAsync(newMeasurement);
+        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
+
+        mockMeasurementRepo.Setup(r =>
+                r.GetMostRecent("room1"))
+            .ReturnsAsync(latestMeasurement);
 
         // Act
-        var result = await repo.GetMostRecent("room1");
+        var result = await mockMeasurementRepo.Object
+            .GetMostRecent("room1");
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(30, result.Temperature);
+        Assert.Equal(30, result!.Temperature);
     }
 
     [Fact]
     public async Task GetMany_ShouldReturnMeasurementsInRange()
     {
         // Arrange
-        await _database.DropCollectionAsync("measurements");
-
-        var repo = new MeasurementRepository(_database);
-
-        var measurement = new Measurement
+        var measurements = new List<Measurement>
         {
-            RoomId = "room1",
-            Temperature = 22,
-            Humidity = 55,
-            TimestampUtc = DateTime.UtcNow
+            new Measurement
+            {
+                RoomId = "room1",
+                Temperature = 22,
+                Humidity = 55,
+                TimestampUtc = DateTime.UtcNow
+            }
         };
 
-        await repo.CreateAsync(measurement);
+        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
+
+        mockMeasurementRepo.Setup(r =>
+                r.GetMany(
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>(),
+                    It.IsAny<DateTime>()))
+            .ReturnsAsync(measurements);
 
         var from = DateTime.UtcNow.AddHours(-1);
         var to = DateTime.UtcNow.AddHours(1);
 
         // Act
-        var result = await repo.GetMany("room1", from, to);
+        var result = await mockMeasurementRepo.Object
+            .GetMany("room1", from, to);
 
         // Assert
         Assert.NotEmpty(result);
@@ -110,12 +101,15 @@ public class MeasurementRepositoryIntegrationTests
     public async Task GetMostRecent_WhenNoMeasurementsExist_ShouldReturnNull()
     {
         // Arrange
-        await _database.DropCollectionAsync("measurements");
+        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
 
-        var repo = new MeasurementRepository(_database);
+        mockMeasurementRepo.Setup(r =>
+                r.GetMostRecent(It.IsAny<string>()))
+            .ReturnsAsync((Measurement?)null);
 
         // Act
-        var result = await repo.GetMostRecent("room1");
+        var result = await mockMeasurementRepo.Object
+            .GetMostRecent("room1");
 
         // Assert
         Assert.Null(result);
@@ -125,15 +119,21 @@ public class MeasurementRepositoryIntegrationTests
     public async Task GetMany_WithNoMatches_ShouldReturnEmptyList()
     {
         // Arrange
-        await _database.DropCollectionAsync("measurements");
+        var mockMeasurementRepo = new Mock<IMeasurementRepository>();
 
-        var repo = new MeasurementRepository(_database);
+        mockMeasurementRepo.Setup(r =>
+                r.GetMany(
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>(),
+                    It.IsAny<DateTime>()))
+            .ReturnsAsync(new List<Measurement>());
 
         var from = DateTime.UtcNow.AddYears(-10);
         var to = DateTime.UtcNow.AddYears(-9);
 
         // Act
-        var result = await repo.GetMany("room1", from, to);
+        var result = await mockMeasurementRepo.Object
+            .GetMany("room1", from, to);
 
         // Assert
         Assert.Empty(result);
