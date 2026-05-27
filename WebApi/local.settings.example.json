@@ -1,0 +1,25 @@
+{
+  "TcpService": {
+    "Enabled": true
+  },
+  "CloudApi": {
+    "MeasurementEndpoint": "",
+    "DeviceActionEndpoint": ""
+  },
+    "ConnectionStrings": {
+    "Mongo": "",
+    "Postgres": ""
+  },
+  "Mal": {
+    "ScenarioEndpoint": ""
+  },
+  "IoT": {
+    "ApiKey": ""
+  },
+  "Jwt": {
+    "Key": "",
+    "Issuer": "",
+    "Audience": "",
+    "ExpiresInMinutes": 60
+  }
+}

@@ -1,14 +1,20 @@
+using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using Repositories;
 using Repositories.PostgreSQL;
 using RepositoryContracts;
 using WebApi.TCP;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.AddJsonFile(
+    "local.settings.json",
+    optional: true,
+    reloadOnChange: true
+);
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 
@@ -65,10 +71,10 @@ builder.Services.AddCors(options =>
     });
 });
 
-string mongoConnectionString = Environment.GetEnvironmentVariable("MONGO_AZURE_CONNECTIONSTRING")
-    ?? builder.Configuration.GetConnectionString("Mongo")
+string mongoConnectionString =
+    builder.Configuration.GetConnectionString("Mongo")
+    ?? Environment.GetEnvironmentVariable("MONGO_AZURE_CONNECTIONSTRING")
     ?? throw new InvalidOperationException("Missing Mongo connection string.");
-
 
 builder.Services.AddSingleton<IMongoClient>(_ =>
     new MongoClient(mongoConnectionString));
@@ -81,8 +87,9 @@ builder.Services.AddSingleton(sp =>
 
 builder.Services.AddScoped<IMeasurementRepository, MeasurementRepository>();
 
-string postgresConnectionString = Environment.GetEnvironmentVariable("AZURE_POSTGRESQL_CONNECTIONSTRING")
-    ?? builder.Configuration.GetConnectionString("Postgres")
+string postgresConnectionString =
+    builder.Configuration.GetConnectionString("Postgres")
+    ?? Environment.GetEnvironmentVariable("AZURE_POSTGRESQL_CONNECTIONSTRING")
     ?? throw new InvalidOperationException("Missing Postgres connection string.");
 
 builder.Services.AddScoped<IUserRepository>(_ => new UserRepository(postgresConnectionString));
@@ -93,9 +100,10 @@ builder.Services.AddScoped<IDeviceActionLogRepository>(_ =>
 
 builder.Services.AddScoped<JwtTokenService>();
 
-if (builder.Environment.IsDevelopment())
+builder.Services.AddHttpClient();
+
+if (builder.Configuration.GetValue<bool>("TcpService:Enabled"))
 {
-    builder.Services.AddHttpClient();
     builder.Services.AddHostedService<TCPService>();
 }
 
