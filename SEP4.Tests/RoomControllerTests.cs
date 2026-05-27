@@ -25,7 +25,7 @@ public class RoomControllerTests
     }
 
     [Fact]
-    public async Task CreateRoom_WithMissingUserId_ShouldReturnBadRequest()
+    public async Task CreateRoom_WithValidTokenUser_ShouldReturnOk()
     {
         // Arrange
         var mockRoomRepo = new Mock<IRoomRepository>();
@@ -142,7 +142,9 @@ public class RoomControllerTests
         var mockRoomRepo = new Mock<IRoomRepository>();
 
         mockRoomRepo.Setup(r =>
-                r.GetSingle(It.IsAny<string>()))
+             r.GetSingleForUserAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>()))
             .ThrowsAsync(new KeyNotFoundException("Room not found."));
 
         var controller = new RoomController(
@@ -155,7 +157,7 @@ public class RoomControllerTests
         var result = await controller.GetRoomById("unknownRoom");
 
         // Assert
-        Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<NotFoundObjectResult>(result);
     }
 
     [Fact]
