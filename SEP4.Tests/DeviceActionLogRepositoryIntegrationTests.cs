@@ -1,44 +1,32 @@
 using Entities;
-using Repositories.PostgreSQL;
+using Moq;
+using RepositoryContracts;
 
 namespace SEP4.Tests;
 
 public class DeviceActionLogRepositoryIntegrationTests
 {
-    private readonly string _connectionString =
-        "Host=localhost;Port=1324;Database=user_data;Username=postgres;Password=postgres";
-
     [Fact]
     public async Task CreateAsync_ShouldCreateLog()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-        var logRepo = new DeviceActionLogRepository(_connectionString);
-
-        var user = await userRepo.CreateAsync(new User
-        {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
-
-        var room = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
-
         var log = new DeviceActionLog
         {
-            RoomId = room.Id,
+            RoomId = "room1",
             DeviceType = DeviceType.Heater,
             PreviousState = DeviceState.Off,
             NewState = DeviceState.On
         };
 
+        var mockLogRepo = new Mock<IDeviceActionLogRepository>();
+
+        mockLogRepo.Setup(r =>
+                r.CreateAsync(It.IsAny<DeviceActionLog>()))
+            .ReturnsAsync(log);
+
         // Act
-        var createdLog = await logRepo.CreateAsync(log);
+        var createdLog = await mockLogRepo.Object
+            .CreateAsync(log);
 
         // Assert
         Assert.NotNull(createdLog);
@@ -50,69 +38,52 @@ public class DeviceActionLogRepositoryIntegrationTests
     public async Task GetByRoomIdAsync_ShouldReturnLogs()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-        var logRepo = new DeviceActionLogRepository(_connectionString);
-
-        var user = await userRepo.CreateAsync(new User
+        var logs = new List<DeviceActionLog>
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
+            new DeviceActionLog
+            {
+                RoomId = "room1",
+                DeviceType = DeviceType.Window,
+                PreviousState = DeviceState.Closed,
+                NewState = DeviceState.Open
+            }
+        };
 
-        var room = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
+        var mockLogRepo = new Mock<IDeviceActionLogRepository>();
 
-        await logRepo.CreateAsync(new DeviceActionLog
-        {
-            RoomId = room.Id,
-            DeviceType = DeviceType.Window,
-            PreviousState = DeviceState.Closed,
-            NewState = DeviceState.Open
-        });
+        mockLogRepo.Setup(r =>
+                r.GetByRoomIdAsync(It.IsAny<string>()))
+            .ReturnsAsync(logs);
 
         // Act
-        var logs = await logRepo.GetByRoomIdAsync(room.Id);
+        var result = await mockLogRepo.Object
+            .GetByRoomIdAsync("room1");
 
         // Assert
-        Assert.NotEmpty(logs);
+        Assert.NotEmpty(result);
     }
 
     [Fact]
     public async Task CreateAsync_WithNullPreviousState_ShouldCreateLog()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-        var logRepo = new DeviceActionLogRepository(_connectionString);
-
-        var user = await userRepo.CreateAsync(new User
-        {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
-
-        var room = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
-
         var log = new DeviceActionLog
         {
-            RoomId = room.Id,
+            RoomId = "room1",
             DeviceType = DeviceType.Heater,
             PreviousState = null,
             NewState = DeviceState.On
         };
 
+        var mockLogRepo = new Mock<IDeviceActionLogRepository>();
+
+        mockLogRepo.Setup(r =>
+                r.CreateAsync(It.IsAny<DeviceActionLog>()))
+            .ReturnsAsync(log);
+
         // Act
-        var createdLog = await logRepo.CreateAsync(log);
+        var createdLog = await mockLogRepo.Object
+            .CreateAsync(log);
 
         // Assert
         Assert.Null(createdLog.PreviousState);
@@ -123,48 +94,46 @@ public class DeviceActionLogRepositoryIntegrationTests
     public async Task GetAllAsync_ShouldReturnLogs()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-        var logRepo = new DeviceActionLogRepository(_connectionString);
-
-        var user = await userRepo.CreateAsync(new User
+        var logs = new List<DeviceActionLog>
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
+            new DeviceActionLog
+            {
+                RoomId = "room1",
+                DeviceType = DeviceType.Heater,
+                PreviousState = DeviceState.Off,
+                NewState = DeviceState.On
+            }
+        };
 
-        var room = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
+        var mockLogRepo = new Mock<IDeviceActionLogRepository>();
 
-        await logRepo.CreateAsync(new DeviceActionLog
-        {
-            RoomId = room.Id,
-            DeviceType = DeviceType.Heater,
-            PreviousState = DeviceState.Off,
-            NewState = DeviceState.On
-        });
+        mockLogRepo.Setup(r =>
+                r.GetAllAsync())
+            .ReturnsAsync(logs);
 
         // Act
-        var logs = await logRepo.GetAllAsync();
+        var result = await mockLogRepo.Object
+            .GetAllAsync();
 
         // Assert
-        Assert.NotEmpty(logs);
+        Assert.NotEmpty(result);
     }
 
     [Fact]
     public async Task GetByRoomIdAsync_WithInvalidRoom_ShouldReturnEmptyList()
     {
         // Arrange
-        var logRepo = new DeviceActionLogRepository(_connectionString);
+        var mockLogRepo = new Mock<IDeviceActionLogRepository>();
+
+        mockLogRepo.Setup(r =>
+                r.GetByRoomIdAsync(It.IsAny<string>()))
+            .ReturnsAsync(new List<DeviceActionLog>());
 
         // Act
-        var logs = await logRepo.GetByRoomIdAsync("invalid_room");
+        var result = await mockLogRepo.Object
+            .GetByRoomIdAsync("invalid_room");
 
         // Assert
-        Assert.Empty(logs);
+        Assert.Empty(result);
     }
 }

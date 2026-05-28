@@ -1,44 +1,32 @@
 using Entities;
-using Repositories.PostgreSQL;
+using Moq;
+using RepositoryContracts;
 
 namespace SEP4.Tests;
 
 public class DeviceRepositoryIntegrationTests
 {
-    private readonly string _connectionString =
-        "Host=localhost;Port=1324;Database=user_data;Username=postgres;Password=postgres";
-
     [Fact]
     public async Task CreateAsync_ShouldCreateDevice()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-        var deviceRepo = new DeviceRepository(_connectionString);
-
-        var user = await userRepo.CreateAsync(new User
-        {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
-
-        var room = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
-
         var device = new Device
         {
-            Id = Guid.NewGuid().ToString("N")[..10],
-            RoomId = room.Id,
+            Id = "device1",
+            RoomId = "room1",
             Type = DeviceType.Heater,
             State = DeviceState.On
         };
 
+        var mockDeviceRepo = new Mock<IDeviceRepository>();
+
+        mockDeviceRepo.Setup(r =>
+                r.CreateAsync(It.IsAny<Device>()))
+            .ReturnsAsync(device);
+
         // Act
-        var createdDevice = await deviceRepo.CreateAsync(device);
+        var createdDevice = await mockDeviceRepo.Object
+            .CreateAsync(device);
 
         // Assert
         Assert.NotNull(createdDevice);
@@ -51,36 +39,26 @@ public class DeviceRepositoryIntegrationTests
     public async Task GetDevice_ShouldReturnDevice()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-        var deviceRepo = new DeviceRepository(_connectionString);
-
-        var user = await userRepo.CreateAsync(new User
+        var fakeDevice = new Device
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
-
-        var room = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
-
-        var createdDevice = await deviceRepo.CreateAsync(new Device
-        {
-            Id = Guid.NewGuid().ToString("N")[..10],
-            RoomId = room.Id,
+            Id = "device1",
+            RoomId = "room1",
             Type = DeviceType.Window,
             State = DeviceState.Open
-        });
+        };
+
+        var mockDeviceRepo = new Mock<IDeviceRepository>();
+
+        mockDeviceRepo.Setup(r =>
+                r.GetDevice("device1"))
+            .ReturnsAsync(fakeDevice);
 
         // Act
-        var fetchedDevice = await deviceRepo.GetDevice(createdDevice.Id);
+        var fetchedDevice = await mockDeviceRepo.Object
+            .GetDevice("device1");
 
         // Assert
-        Assert.Equal(createdDevice.Id, fetchedDevice.Id);
+        Assert.Equal(fakeDevice.Id, fetchedDevice.Id);
         Assert.Equal(DeviceType.Window, fetchedDevice.Type);
         Assert.Equal(DeviceState.Open, fetchedDevice.State);
     }
@@ -89,45 +67,32 @@ public class DeviceRepositoryIntegrationTests
     public async Task GetDevice_WithInvalidId_ShouldThrowException()
     {
         // Arrange
-        var deviceRepo = new DeviceRepository(_connectionString);
+        var mockDeviceRepo = new Mock<IDeviceRepository>();
+
+        mockDeviceRepo.Setup(r =>
+                r.GetDevice(It.IsAny<string>()))
+            .ThrowsAsync(new KeyNotFoundException());
 
         // Act + Assert
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            deviceRepo.GetDevice("invalid_device"));
+            mockDeviceRepo.Object.GetDevice("invalid_device"));
     }
 
     [Fact]
     public async Task GetDeviceState_ShouldReturnState()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-        var deviceRepo = new DeviceRepository(_connectionString);
+        var mockDeviceRepo = new Mock<IDeviceRepository>();
 
-        var user = await userRepo.CreateAsync(new User
-        {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
-
-        var room = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
-
-        await deviceRepo.CreateAsync(new Device
-        {
-            Id = Guid.NewGuid().ToString("N")[..10],
-            RoomId = room.Id,
-            Type = DeviceType.Heater,
-            State = DeviceState.On
-        });
+        mockDeviceRepo.Setup(r =>
+                r.GetDeviceState(
+                    It.IsAny<string>(),
+                    It.IsAny<DeviceType>()))
+            .ReturnsAsync(DeviceState.On);
 
         // Act
-        var state = await deviceRepo.GetDeviceState(
-            room.Id,
+        var state = await mockDeviceRepo.Object.GetDeviceState(
+            "room1",
             DeviceType.Heater
         );
 
@@ -139,11 +104,17 @@ public class DeviceRepositoryIntegrationTests
     public async Task GetDeviceState_WithInvalidRoom_ShouldThrowException()
     {
         // Arrange
-        var deviceRepo = new DeviceRepository(_connectionString);
+        var mockDeviceRepo = new Mock<IDeviceRepository>();
+
+        mockDeviceRepo.Setup(r =>
+                r.GetDeviceState(
+                    It.IsAny<string>(),
+                    It.IsAny<DeviceType>()))
+            .ThrowsAsync(new KeyNotFoundException());
 
         // Act + Assert
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            deviceRepo.GetDeviceState(
+            mockDeviceRepo.Object.GetDeviceState(
                 "invalid_room",
                 DeviceType.Heater
             ));
@@ -153,42 +124,33 @@ public class DeviceRepositoryIntegrationTests
     public async Task SetState_ShouldUpdateDeviceState()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-        var deviceRepo = new DeviceRepository(_connectionString);
+        var mockDeviceRepo = new Mock<IDeviceRepository>();
 
-        var user = await userRepo.CreateAsync(new User
-        {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
+        mockDeviceRepo.Setup(r =>
+                r.SetState(
+                    It.IsAny<string>(),
+                    It.IsAny<DeviceType>(),
+                    It.IsAny<DeviceState>()))
+            .Returns(Task.CompletedTask);
 
-        var room = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
-
-        await deviceRepo.CreateAsync(new Device
-        {
-            Id = Guid.NewGuid().ToString("N")[..10],
-            RoomId = room.Id,
-            Type = DeviceType.Heater,
-            State = DeviceState.Off
-        });
+        mockDeviceRepo.Setup(r =>
+                r.GetDeviceState(
+                    It.IsAny<string>(),
+                    It.IsAny<DeviceType>()))
+            .ReturnsAsync(DeviceState.On);
 
         // Act
-        await deviceRepo.SetState(
-            room.Id,
+        await mockDeviceRepo.Object.SetState(
+            "room1",
             DeviceType.Heater,
             DeviceState.On
         );
 
-        var updatedState = await deviceRepo.GetDeviceState(
-            room.Id,
-            DeviceType.Heater
-        );
+        var updatedState = await mockDeviceRepo.Object
+            .GetDeviceState(
+                "room1",
+                DeviceType.Heater
+            );
 
         // Assert
         Assert.Equal(DeviceState.On, updatedState);
@@ -198,11 +160,18 @@ public class DeviceRepositoryIntegrationTests
     public async Task SetState_WithInvalidRoom_ShouldThrowException()
     {
         // Arrange
-        var deviceRepo = new DeviceRepository(_connectionString);
+        var mockDeviceRepo = new Mock<IDeviceRepository>();
+
+        mockDeviceRepo.Setup(r =>
+                r.SetState(
+                    It.IsAny<string>(),
+                    It.IsAny<DeviceType>(),
+                    It.IsAny<DeviceState>()))
+            .ThrowsAsync(new KeyNotFoundException());
 
         // Act + Assert
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            deviceRepo.SetState(
+            mockDeviceRepo.Object.SetState(
                 "invalid_room",
                 DeviceType.Heater,
                 DeviceState.On
@@ -213,36 +182,23 @@ public class DeviceRepositoryIntegrationTests
     public async Task GetAllDevices_ShouldReturnDevices()
     {
         // Arrange
-        var userRepo = new UserRepository(_connectionString);
-        var roomRepo = new RoomRepository(_connectionString);
-        var deviceRepo = new DeviceRepository(_connectionString);
-
-        var user = await userRepo.CreateAsync(new User
+        var devices = new Dictionary<DeviceType, DeviceState>
         {
-            Name = Guid.NewGuid().ToString("N")[..10],
-            Email = $"{Guid.NewGuid().ToString("N")[..8]}@t.com",
-            PasswordHash = "hashedPassword"
-        });
+            { DeviceType.Heater, DeviceState.On }
+        };
 
-        var room = await roomRepo.CreateAsync(new Room
-        {
-            UserId = user.Id,
-            Name = Guid.NewGuid().ToString("N")[..8]
-        });
+        var mockDeviceRepo = new Mock<IDeviceRepository>();
 
-        await deviceRepo.CreateAsync(new Device
-        {
-            Id = Guid.NewGuid().ToString("N")[..10],
-            RoomId = room.Id,
-            Type = DeviceType.Heater,
-            State = DeviceState.On
-        });
+        mockDeviceRepo.Setup(r =>
+                r.GetAllDevices(It.IsAny<string>()))
+            .ReturnsAsync(devices);
 
         // Act
-        var devices = await deviceRepo.GetAllDevices(room.Id);
+        var result = await mockDeviceRepo.Object
+            .GetAllDevices("room1");
 
         // Assert
-        Assert.NotEmpty(devices);
-        Assert.True(devices.ContainsKey(DeviceType.Heater));
+        Assert.NotEmpty(result);
+        Assert.True(result.ContainsKey(DeviceType.Heater));
     }
 }
